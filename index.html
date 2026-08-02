@@ -116,6 +116,43 @@
         .source-dot.c4 { background: #8A5A2E; }
         .source-dot.c5 { background: #6B4C9A; }
         .source-dot.c6 { background: #2A7A4F; }
+        .source-dot.c7 { background: #B0223D; }
+
+        /* ============ SELECTOR DE IDIOMA ============ */
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .lang-switch {
+            display: flex;
+            gap: 4px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 100px;
+            padding: 3px;
+            flex-shrink: 0;
+        }
+
+        .lang-btn {
+            border: none;
+            background: transparent;
+            padding: 5px 14px;
+            border-radius: 100px;
+            font-family: var(--font-mono);
+            font-size: 0.78em;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--steel);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .lang-btn:hover:not(.active) { color: var(--ink); }
+        .lang-btn.active { background: var(--ink); color: var(--paper); }
 
         /* ============ TARJETA DE FILTROS ============ */
         .filter-card {
@@ -167,6 +204,37 @@
         }
 
         select:hover, input[type="text"]:hover { border-color: var(--steel-soft); }
+
+        /* ============ SELECTOR DE CATEGORÍA (SEGMENTADO) ============ */
+        .segmented-control {
+            display: flex;
+            background-color: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 3px;
+        }
+
+        .segment-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 9px 10px;
+            border-radius: 6px;
+            font-family: var(--font-body);
+            font-size: 0.88em;
+            font-weight: 600;
+            color: var(--steel);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .segment-btn:hover:not(.active) { color: var(--ink); }
+        .segment-btn.active {
+            background-color: var(--panel);
+            color: var(--ink);
+            box-shadow: 0 1px 2px rgba(18, 24, 31, 0.08);
+        }
 
         select:focus-visible, input:focus-visible, button:focus-visible, a:focus-visible {
             outline: 2px solid var(--signal);
@@ -253,6 +321,46 @@
         .btn-search:hover { background-color: var(--signal); }
         .btn-search:active { transform: translateY(1px); }
 
+        .btn-export {
+            background-color: transparent;
+            color: var(--ink);
+            border: 1.5px solid var(--ink);
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+            font-size: 0.85em;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-export:hover { background-color: var(--ink); color: var(--paper); }
+        .btn-export:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .btn-export:disabled:hover { background-color: transparent; color: var(--ink); }
+
+        /* ============ AVISOS DE PROVEEDOR ============ */
+        .provider-warnings {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+        .provider-warning {
+            background-color: #FCF3E9;
+            border: 1px solid #E8C9A0;
+            color: #7A4E1D;
+            border-radius: 8px;
+            padding: 9px 14px;
+            font-size: 0.87em;
+            letter-spacing: 0.01em;
+        }
+
         /* ============ RESUMEN DE RESULTADOS ============ */
         .results-summary {
             display: flex;
@@ -321,7 +429,7 @@
         }
 
         /* Precios y año en mono con cifras tabulares, como un cuentakilómetros */
-        td:nth-child(5), td:nth-child(6), td:nth-child(7) {
+        td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(8) {
             font-family: var(--font-mono);
             font-variant-numeric: tabular-nums;
             font-size: 0.88em;
@@ -347,6 +455,47 @@
 
         .car-link:hover { color: var(--signal); border-color: var(--signal); }
 
+        /* ============ BADGE DE PUNTUACIÓN ============ */
+        .score-badge {
+            display: inline-block;
+            padding: 4px 11px;
+            border-radius: 100px;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 0.85em;
+            white-space: nowrap;
+        }
+        .score-alta { background: #DCEEE0; color: #1C6E63; }
+        .score-media { background: #FCEFD9; color: #8A5A2E; }
+        .score-baja { background: #F6DCDA; color: #B0223D; }
+        .score-nd { background: var(--paper); color: var(--steel-soft); border: 1px solid var(--line); }
+
+        /* ============ TOGGLE DE FILTROS ============ */
+        .filters-toggle-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .btn-toggle-filters {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-family: var(--font-body);
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--steel);
+            cursor: pointer;
+            transition: border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .btn-toggle-filters:hover { color: var(--ink); border-color: var(--steel-soft); }
+        .btn-toggle-filters #iconoToggleFiltros { font-family: var(--font-mono); }
+
         /* ============ RESPONSIVE ============ */
         @media (max-width: 640px) {
             body { padding: 28px 16px 56px; }
@@ -355,14 +504,21 @@
             th, td { padding: 12px; }
         }
     </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
 <div class="container">
     <div class="header-bar">
-        <p class="eyebrow">Buscador multi-fuente · 6 portales en vivo</p>
-        <h1>Buscador de Vehículos (KM0 / Segunda Mano)</h1>
-        <p class="header-sub">Filtra por marca, año y precio y encuentra al instante lo que ofrecen los principales portales de coches de segunda mano y KM0 en España.</p>
+        <div class="header-top">
+            <p class="eyebrow" data-i18n="eyebrow">Buscador multi-fuente · 7 portales en vivo</p>
+            <div class="lang-switch">
+                <button type="button" class="lang-btn" data-lang="es" onclick="cambiarIdioma('es')">ES</button>
+                <button type="button" class="lang-btn" data-lang="ca" onclick="cambiarIdioma('ca')">CA</button>
+            </div>
+        </div>
+        <h1 data-i18n="h1">Buscador de Vehículos (KM0 / Segunda Mano)</h1>
+        <p class="header-sub" data-i18n="sub">Filtra por marca, año y precio y encuentra al instante lo que ofrecen los principales portales de coches de segunda mano y KM0 en España.</p>
         <div class="source-legend">
             <span class="source-chip"><span class="source-dot c1"></span>Flexicar</span>
             <span class="source-chip"><span class="source-dot c2"></span>Autokolecció</span>
@@ -370,14 +526,22 @@
             <span class="source-chip"><span class="source-dot c4"></span>Cochesinternet.net</span>
             <span class="source-chip"><span class="source-dot c5"></span>Coches.com</span>
             <span class="source-chip"><span class="source-dot c6"></span>OcasionPlus</span>
+            <span class="source-chip"><span class="source-dot c7"></span>Mibec</span>
         </div>
     </div>
 
-    <div class="filter-card">
+    <div class="filters-toggle-row">
+        <button class="btn-toggle-filters" id="btnToggleFiltros" onclick="toggleFiltros()">
+            <span id="iconoToggleFiltros">▾</span>
+            <span id="textoToggleFiltros" data-i18n="btnOcultarFiltros">Ocultar filtros</span>
+        </button>
+    </div>
+
+    <div class="filter-card" id="filterCard">
         <div class="grid-filters">
             <!-- Desplegable Marcas Extendido -->
             <div class="form-group">
-                <label for="marcaSelect">Marca:</label>
+                <label for="marcaSelect" data-i18n="labelMarca">Marca:</label>
                 <select id="marcaSelect">
                     <option value="audi">Audi</option>
                     <option value="bmw">BMW</option>
@@ -399,25 +563,26 @@
 
             <!-- Categoría -->
             <div class="form-group">
-                <label for="categoriaSelect">Categoría:</label>
-                <select id="categoriaSelect">
-                    <option value="todas">Todas</option>
-                    <option value="coches-km0">KM0</option>
-                    <option value="segunda-mano">Ocasión</option>
-                </select>
+                <label data-i18n="labelCategoria">Categoría:</label>
+                <div class="segmented-control" id="categoriaControl" role="group">
+                    <button type="button" class="segment-btn active" data-valor="todas" data-i18n="catTodas" onclick="seleccionarCategoria('todas', this)">Todas</button>
+                    <button type="button" class="segment-btn" data-valor="coches-km0" onclick="seleccionarCategoria('coches-km0', this)">KM0</button>
+                    <button type="button" class="segment-btn" data-valor="segunda-mano" data-i18n="catOcasion" onclick="seleccionarCategoria('segunda-mano', this)">Ocasión</button>
+                </div>
             </div>
 
             <!-- Proveedor B2C -->
             <div class="form-group">
-                <label for="proveedorSelect">Proveedor B2C:</label>
+                <label for="proveedorSelect" data-i18n="labelProveedor">Proveedor B2C:</label>
                 <select id="proveedorSelect">
-                    <option value="todos">Todos (6 Fuentes)</option>
+                    <option value="todos" data-i18n="provTodos">Todos (7 Fuentes)</option>
                     <option value="autokoleccio">Autokolecció</option>
                     <option value="flexicar">Flexicar</option>
                     <option value="cochesnet">Coches.net</option>
                     <option value="cochesinternet">Cochesinternet.net</option>
                     <option value="cochescom">Coches.com</option>
                     <option value="ocasionplus">OcasionPlus</option>
+                    <option value="mibec">Mibec</option>
                 </select>
             </div>
         </div>
@@ -426,7 +591,7 @@
             <!-- Double Slider de Año (2021-2026 por defecto) -->
             <div class="form-group">
                 <label>
-                    <span>Rango de Año:</span>
+                    <span data-i18n="labelRangoAnio">Rango de Año:</span>
                     <span id="anioValores">2021 - 2026</span>
                 </label>
                 <div class="range-slider-container">
@@ -440,7 +605,7 @@
             <!-- Double Slider de Precio (0-100.000 € por defecto) -->
             <div class="form-group">
                 <label>
-                    <span>Rango de Precio (€):</span>
+                    <span data-i18n="labelRangoPrecio">Rango de Precio (€):</span>
                     <span id="precioValores">0 € - 100.000 €</span>
                 </label>
                 <div class="range-slider-container">
@@ -450,37 +615,71 @@
                     <input type="range" id="precioMax" min="0" max="150000" step="1000" value="100000" oninput="updatePrecioSlider()">
                 </div>
             </div>
+
+            <!-- Double Slider de Potencia (0-500 CV por defecto) -->
+            <div class="form-group">
+                <label>
+                    <span data-i18n="labelRangoPotencia">Rango de Potencia (CV):</span>
+                    <span id="potenciaValores">0 - 500 CV</span>
+                </label>
+                <div class="range-slider-container">
+                    <div class="slider-track"></div>
+                    <div class="slider-highlight" id="potenciaHighlight"></div>
+                    <input type="range" id="potenciaMin" min="0" max="500" step="10" value="0" oninput="updatePotenciaSlider()">
+                    <input type="range" id="potenciaMax" min="0" max="500" step="10" value="500" oninput="updatePotenciaSlider()">
+                </div>
+            </div>
+
+            <!-- Double Slider de Kilómetros (0-200.000 km por defecto) -->
+            <div class="form-group">
+                <label>
+                    <span data-i18n="labelRangoKm">Rango de Kilómetros:</span>
+                    <span id="kmValores">0 - 200.000 km</span>
+                </label>
+                <div class="range-slider-container">
+                    <div class="slider-track"></div>
+                    <div class="slider-highlight" id="kmHighlight"></div>
+                    <input type="range" id="kmMin" min="0" max="200000" step="5000" value="0" oninput="updateKmSlider()">
+                    <input type="range" id="kmMax" min="0" max="200000" step="5000" value="200000" oninput="updateKmSlider()">
+                </div>
+            </div>
         </div>
 
         <div style="text-align: right;">
-            <button class="btn-search" onclick="buscarCoches()">Filtrar y Buscar</button>
+            <button class="btn-search" onclick="buscarCoches()" data-i18n="btnBuscar">Filtrar y Buscar</button>
         </div>
     </div>
 
     <!-- Contador dinámico de resultados -->
     <div class="results-summary">
         <div class="results-count">
-            Vehículos encontrados: <span class="results-badge" id="numCoches">0</span>
+            <span data-i18n="labelEncontrados">Vehículos encontrados:</span> <span class="results-badge" id="numCoches">0</span>
         </div>
+        <button class="btn-export" id="btnExportar" onclick="exportarExcel()" data-i18n="btnExportar" disabled>⬇ Exportar a Excel</button>
     </div>
+
+    <!-- Avisos si algún proveedor ha vuelto sin resultados mientras otros sí -->
+    <div class="provider-warnings" id="avisosProveedor"></div>
 
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
-                    <th>Proveedor</th>
-                    <th>Categoría</th>
-                    <th>Marca</th>
-                    <th>Modelo (Enlace)</th>
-                    <th>Año</th>
-                    <th>Potencia</th>
-                    <th>Precio Contado</th>
-                    <th>Precio Financiado</th>
+                    <th data-i18n="thProveedor">Proveedor</th>
+                    <th data-i18n="thCategoria">Categoría</th>
+                    <th data-i18n="thMarca">Marca</th>
+                    <th data-i18n="thModelo">Modelo (Enlace)</th>
+                    <th data-i18n="thAnio">Año</th>
+                    <th data-i18n="thKm">Kilómetros</th>
+                    <th data-i18n="thPotencia">Potencia</th>
+                    <th data-i18n="thContado">Precio Contado</th>
+                    <th data-i18n="thFinanciado">Precio Financiado</th>
+                    <th data-i18n="thPuntuacion">Puntuación</th>
                 </tr>
             </thead>
             <tbody id="tablaResultados">
                 <tr>
-                    <td colspan="8" style="text-align:center; color: #8A94A0; padding: 32px 18px;">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
+                    <td colspan="10" style="text-align:center; color: #8A94A0; padding: 32px 18px;" data-i18n="msgInicial">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
                 </tr>
             </tbody>
         </table>
@@ -488,6 +687,118 @@
 </div>
 
 <script>
+// Últimos resultados recibidos, guardados para poder exportarlos a Excel
+let ultimosResultados = [];
+
+// Textos de la interfaz en castellano y catalán. Los datos que llegan de
+// los proveedores (nombres de portal, marca, categoría, modelo...) NO pasan
+// por aquí -- se muestran tal cual los devuelve el backend, sin traducir.
+const I18N = {
+    es: {
+        title: "Buscador de Vehículos Multi-Fuente",
+        eyebrow: "Buscador multi-fuente · 7 portales en vivo",
+        h1: "Buscador de Vehículos (KM0 / Segunda Mano)",
+        sub: "Filtra por marca, año y precio y encuentra al instante lo que ofrecen los principales portales de coches de segunda mano y KM0 en España.",
+        labelMarca: "Marca:",
+        labelCategoria: "Categoría:",
+        catTodas: "Todas",
+        catOcasion: "Ocasión",
+        labelProveedor: "Proveedor B2C:",
+        provTodos: "Todos (7 Fuentes)",
+        labelRangoAnio: "Rango de Año:",
+        labelRangoPrecio: "Rango de Precio (€):",
+        labelRangoPotencia: "Rango de Potencia (CV):",
+        labelRangoKm: "Rango de Kilómetros:",
+        btnOcultarFiltros: "Ocultar filtros",
+        btnMostrarFiltros: "Mostrar filtros",
+        btnBuscar: "Filtrar y Buscar",
+        labelEncontrados: "Vehículos encontrados:",
+        btnExportar: "⬇ Exportar a Excel",
+        thProveedor: "Proveedor",
+        thCategoria: "Categoría",
+        thMarca: "Marca",
+        thModelo: "Modelo (Enlace)",
+        thAnio: "Año",
+        thKm: "Kilómetros",
+        thPotencia: "Potencia",
+        thContado: "Precio Contado",
+        thFinanciado: "Precio Financiado",
+        thPuntuacion: "Puntuación",
+        msgInicial: 'Haz clic en "Filtrar y Buscar" para obtener resultados',
+        msgCargando: "Cargando vehículos desde las fuentes seleccionadas...",
+        msgSinResultados: "No se encontraron vehículos para los filtros aplicados.",
+        msgError: "Error conectando con el servidor.",
+        msgAviso: (n) => `⚠ ${n} no ha devuelto resultados esta vez — puede que su web haya cambiado o esté dando problemas puntuales.`
+    },
+    ca: {
+        title: "Cercador de Vehicles Multi-Font",
+        eyebrow: "Cercador multi-font · 7 portals en viu",
+        h1: "Cercador de Vehicles (KM0 / Segona Mà)",
+        sub: "Filtra per marca, any i preu i troba a l'instant el que ofereixen els principals portals de cotxes de segona mà i KM0 a Espanya.",
+        labelMarca: "Marca:",
+        labelCategoria: "Categoria:",
+        catTodas: "Totes",
+        catOcasion: "Ocasió",
+        labelProveedor: "Proveïdor B2C:",
+        provTodos: "Tots (7 Fonts)",
+        labelRangoAnio: "Rang d'Any:",
+        labelRangoPrecio: "Rang de Preu (€):",
+        labelRangoPotencia: "Rang de Potència (CV):",
+        labelRangoKm: "Rang de Quilòmetres:",
+        btnOcultarFiltros: "Amaga els filtres",
+        btnMostrarFiltros: "Mostra els filtres",
+        btnBuscar: "Filtra i Cerca",
+        labelEncontrados: "Vehicles trobats:",
+        btnExportar: "⬇ Exporta a Excel",
+        thProveedor: "Proveïdor",
+        thCategoria: "Categoria",
+        thMarca: "Marca",
+        thModelo: "Model (Enllaç)",
+        thAnio: "Any",
+        thKm: "Quilòmetres",
+        thPotencia: "Potència",
+        thContado: "Preu Comptat",
+        thFinanciado: "Preu Finançat",
+        thPuntuacion: "Puntuació",
+        msgInicial: 'Fes clic a "Filtra i Cerca" per obtenir resultats',
+        msgCargando: "Carregant vehicles des de les fonts seleccionades...",
+        msgSinResultados: "No s'ha trobat cap vehicle amb els filtres aplicats.",
+        msgError: "Error connectant amb el servidor.",
+        msgAviso: (n) => `⚠ ${n} no ha retornat resultats aquesta vegada — potser el seu lloc web ha canviat o té problemes puntuals.`
+    }
+};
+
+let idiomaActual = localStorage.getItem('idiomaBuscador') || 'es';
+
+function aplicarTraducciones() {
+    const t = I18N[idiomaActual];
+    document.documentElement.lang = idiomaActual;
+    document.title = t.title;
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const clave = el.getAttribute('data-i18n');
+        if (t[clave] !== undefined) el.textContent = t[clave];
+    });
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === idiomaActual);
+    });
+}
+
+function cambiarIdioma(lang) {
+    idiomaActual = lang;
+    localStorage.setItem('idiomaBuscador', lang);
+    aplicarTraducciones();
+}
+
+// Categoría seleccionada mediante el control segmentado (ya no es un <select>)
+let categoriaSeleccionada = 'todas';
+function seleccionarCategoria(valor, btn) {
+    categoriaSeleccionada = valor;
+    document.querySelectorAll('#categoriaControl .segment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
 // Ajuste interactivo de los sliders de Rango de Año
 function updateAnioSlider() {
     let minInput = document.getElementById('anioMin');
@@ -540,27 +851,120 @@ function updatePrecioSlider() {
     highlight.style.width = (percentMax - percentMin) + '%';
 }
 
-// Inicializar posiciones de los sliders al cargar
+// Ajuste interactivo del slider de Rango de Potencia (mismo patrón que el de precio)
+function updatePotenciaSlider() {
+    let minInput = document.getElementById('potenciaMin');
+    let maxInput = document.getElementById('potenciaMax');
+    let minVal = parseInt(minInput.value);
+    let maxVal = parseInt(maxInput.value);
+
+    if (minVal > maxVal) {
+        let tmp = minVal;
+        minInput.value = maxVal;
+        maxInput.value = tmp;
+        minVal = maxVal;
+        maxVal = tmp;
+    }
+
+    document.getElementById('potenciaValores').textContent = `${minVal} - ${maxVal} CV`;
+
+    let percentMin = ((minVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    let percentMax = ((maxVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+
+    let highlight = document.getElementById('potenciaHighlight');
+    highlight.style.left = percentMin + '%';
+    highlight.style.width = (percentMax - percentMin) + '%';
+}
+
+// Ajuste interactivo del slider de Rango de Kilómetros (mismo patrón)
+function updateKmSlider() {
+    let minInput = document.getElementById('kmMin');
+    let maxInput = document.getElementById('kmMax');
+    let minVal = parseInt(minInput.value);
+    let maxVal = parseInt(maxInput.value);
+
+    if (minVal > maxVal) {
+        let tmp = minVal;
+        minInput.value = maxVal;
+        maxInput.value = tmp;
+        minVal = maxVal;
+        maxVal = tmp;
+    }
+
+    let minFmt = minVal.toLocaleString('es-ES') + ' km';
+    let maxFmt = maxVal.toLocaleString('es-ES') + ' km';
+    document.getElementById('kmValores').textContent = `${minFmt} - ${maxFmt}`;
+
+    let percentMin = ((minVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    let percentMax = ((maxVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+
+    let highlight = document.getElementById('kmHighlight');
+    highlight.style.left = percentMin + '%';
+    highlight.style.width = (percentMax - percentMin) + '%';
+}
+
+// Inicializar posiciones de los sliders e idioma al cargar
 window.onload = function() {
     updateAnioSlider();
     updatePrecioSlider();
+    updatePotenciaSlider();
+    updateKmSlider();
+    aplicarTraducciones();
 };
+
+// Muestra/oculta la zona de filtros para poder trabajar con más espacio
+// sobre la tabla de resultados, sin perder los valores ya seleccionados
+// (los inputs siguen ahí, solo se ocultan visualmente).
+let filtrosVisibles = true;
+function toggleFiltros() {
+    filtrosVisibles = !filtrosVisibles;
+    const card = document.getElementById('filterCard');
+    const icono = document.getElementById('iconoToggleFiltros');
+    const texto = document.getElementById('textoToggleFiltros');
+
+    card.style.display = filtrosVisibles ? '' : 'none';
+    icono.textContent = filtrosVisibles ? '▾' : '▸';
+    texto.textContent = I18N[idiomaActual][filtrosVisibles ? 'btnOcultarFiltros' : 'btnMostrarFiltros'];
+}
+
+// Pinta la puntuación (0-100 o null) como una pastilla de color:
+// verde = buen conjunto año/potencia/km/precio, ámbar = intermedio,
+// rojo = flojo, gris = sin datos suficientes para puntuar.
+// Los "ganadores" (verde) llevan además un 🏆 para que salten a la vista
+// al recorrer la tabla, tal como se pidió.
+function renderPuntuacion(puntuacion) {
+    if (puntuacion === null || puntuacion === undefined) {
+        return `<span class="score-badge score-nd">N/D</span>`;
+    }
+    let clase = 'score-baja';
+    let emoji = '';
+    if (puntuacion >= 75) { clase = 'score-alta'; emoji = ' 🏆'; }
+    else if (puntuacion >= 50) { clase = 'score-media'; }
+    return `<span class="score-badge ${clase}">${puntuacion}${emoji}</span>`;
+}
 
 async function buscarCoches() {
     const tabla = document.getElementById('tablaResultados');
     const badgeCount = document.getElementById('numCoches');
+    const btnExportar = document.getElementById('btnExportar');
 
-    tabla.innerHTML = `<tr><td colspan="8" style="text-align:center;">Cargando vehículos desde las fuentes seleccionadas...</td></tr>`;
+    tabla.innerHTML = `<tr><td colspan="10" style="text-align:center;">${I18N[idiomaActual].msgCargando}</td></tr>`;
     badgeCount.textContent = "...";
+    btnExportar.disabled = true;
+    renderAvisosProveedor(null);
 
     const payload = {
         marca: document.getElementById('marcaSelect').value,
-        categoria: document.getElementById('categoriaSelect').value,
+        categoria: categoriaSeleccionada,
         proveedor: document.getElementById('proveedorSelect').value,
         anioMin: document.getElementById('anioMin').value,
         anioMax: document.getElementById('anioMax').value,
         precioMin: document.getElementById('precioMin').value,
-        precioMax: document.getElementById('precioMax').value
+        precioMax: document.getElementById('precioMax').value,
+        potenciaMin: document.getElementById('potenciaMin').value,
+        potenciaMax: document.getElementById('potenciaMax').value,
+        kmMin: document.getElementById('kmMin').value,
+        kmMax: document.getElementById('kmMax').value
     };
 
     try {
@@ -572,11 +976,14 @@ async function buscarCoches() {
 
         const resData = await response.json();
         const total = resData.data ? resData.data.length : 0;
-        
+
         badgeCount.textContent = total;
+        ultimosResultados = resData.data || [];
+        btnExportar.disabled = ultimosResultados.length === 0;
+        renderAvisosProveedor(resData.proveedores);
 
         if (total === 0) {
-            tabla.innerHTML = `<tr><td colspan="8" style="text-align:center;">No se encontraron vehículos para los filtros aplicados.</td></tr>`;
+            tabla.innerHTML = `<tr><td colspan="10" style="text-align:center;">${I18N[idiomaActual].msgSinResultados}</td></tr>`;
             return;
         }
 
@@ -591,16 +998,76 @@ async function buscarCoches() {
                     </a>
                 </td>
                 <td>${item.anio}</td>
+                <td>${item.kilometros || 'N/D'}</td>
                 <td>${item.potencia || 'N/D'}</td>
                 <td><strong>${item.contado}</strong></td>
                 <td><strong>${item.financiado}</strong></td>
+                <td>${renderPuntuacion(item.puntuacion)}</td>
             </tr>
         `).join('');
 
     } catch (err) {
         badgeCount.textContent = "0";
-        tabla.innerHTML = `<tr><td colspan="8" style="text-align:center; color: red;">Error conectando con el servidor.</td></tr>`;
+        ultimosResultados = [];
+        btnExportar.disabled = true;
+        tabla.innerHTML = `<tr><td colspan="10" style="text-align:center; color: red;">${I18N[idiomaActual].msgError}</td></tr>`;
     }
+}
+
+// Muestra un aviso discreto por cada proveedor que ha vuelto con 0
+// resultados mientras al menos otro sí ha traído coches. Si solo se
+// consulta una fuente, o si todas han fallado a la vez (probablemente un
+// problema de red o de filtros, no de una web en concreto), no se avisa.
+function renderAvisosProveedor(proveedores) {
+    const contenedor = document.getElementById('avisosProveedor');
+    contenedor.innerHTML = '';
+    contenedor.style.display = 'none';
+    if (!proveedores) return;
+
+    const nombres = Object.keys(proveedores);
+    if (nombres.length < 2) return;
+
+    const algunoConResultados = nombres.some(n => proveedores[n] > 0);
+    if (!algunoConResultados) return;
+
+    const fallidos = nombres.filter(n => proveedores[n] === 0);
+    if (fallidos.length === 0) return;
+
+    contenedor.innerHTML = fallidos.map(n =>
+        `<div class="provider-warning">${I18N[idiomaActual].msgAviso(n)}</div>`
+    ).join('');
+    contenedor.style.display = 'flex';
+}
+
+// Exporta los resultados actualmente cargados (ya filtrados) a un .xlsx
+function exportarExcel() {
+    if (!ultimosResultados.length) return;
+
+    const filas = ultimosResultados.map(item => ({
+        'Proveedor': item.proveedor,
+        'Categoría': item.categoria,
+        'Marca': item.marca,
+        'Modelo': item.modelo,
+        'Año': item.anio,
+        'Kilómetros': item.kilometros || 'N/D',
+        'Potencia': item.potencia || 'N/D',
+        'Precio Contado': item.contado,
+        'Precio Financiado': item.financiado,
+        'Puntuación': item.puntuacion !== null && item.puntuacion !== undefined ? item.puntuacion : 'N/D',
+        'URL': item.url
+    }));
+
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [
+        { wch: 18 }, { wch: 10 }, { wch: 12 }, { wch: 42 },
+        { wch: 6 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 11 }, { wch: 55 }
+    ];
+
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Vehículos');
+
+    const fecha = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(libro, `vehiculos_${fecha}.xlsx`);
 }
 </script>
 

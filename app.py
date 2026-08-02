@@ -56,6 +56,113 @@ def extraer_potencia(texto):
         return f"{match_kw.group(1)} kW"
     return "N/D"
 
+def calcular_puntuaciones(resultados):
+    """Puntúa cada vehículo del 0 al 100 comparándolo con el resto de
+    resultados de ESTA MISMA búsqueda (no contra un baremo fijo, porque
+    lo que es "buena potencia" o "buen precio" depende mucho de qué se
+    esté buscando en cada momento -- no es lo mismo comparar utilitarios
+    que berlinas de gama alta).
+
+    Para cada uno de los 4 factores (año, potencia, km, precio al contado)
+    se normaliza el valor del vehículo entre el mínimo y el máximo de ESE
+    factor dentro del conjunto de resultados, invirtiendo km y precio
+    (menos es mejor) y dejando año y potencia tal cual (más es mejor).
+
+    Si un vehículo no tiene alguno de los 4 datos (ej. potencia 'N/D'),
+    ese factor simplemente no entra en su media -- no se le penaliza por
+    un dato que no se ha podido leer, igual que ya hacen los filtros.
+    Si no tiene NINGÚN dato con el que puntuar, se le asigna puntuacion=None
+    (se mostrará como 'N/D' en la tabla, no como un 0 injusto)."""
+
+    valores = {"anio": [], "potencia": [], "km": [], "precio": []}
+    for item in resultados:
+        a = limpiar_numero(item.get("anio"))
+        if a:
+            valores["anio"].append(a)
+        p = valor_potencia_cv(item.get("potencia"))
+        if p is not None:
+            valores["potencia"].append(p)
+        k = limpiar_numero(item.get("kilometros"))
+        if k is not None:
+            valores["km"].append(k)
+        c = limpiar_numero(item.get("contado"))
+        if c:
+            valores["precio"].append(c)
+
+    rangos = {}
+    for clave, lista in valores.items():
+        if lista:
+            rangos[clave] = (min(lista), max(lista))
+
+    def normalizar(valor, minimo, maximo, invertir=False):
+        if maximo == minimo:
+            return 100.0  # todos empatan en este factor: no penaliza a nadie
+        fraccion = (valor - minimo) / (maximo - minimo)
+        if invertir:
+            fraccion = 1 - fraccion
+        return fraccion * 100
+
+    for item in resultados:
+        subpuntuaciones = []
+
+        if "anio" in rangos:
+            a = limpiar_numero(item.get("anio"))
+            if a:
+                subpuntuaciones.append(normalizar(a, *rangos["anio"]))
+
+        if "potencia" in rangos:
+            p = valor_potencia_cv(item.get("potencia"))
+            if p is not None:
+                subpuntuaciones.append(normalizar(p, *rangos["potencia"]))
+
+        if "km" in rangos:
+            k = limpiar_numero(item.get("kilometros"))
+            if k is not None:
+                subpuntuaciones.append(normalizar(k, *rangos["km"], invertir=True))
+
+        if "precio" in rangos:
+            c = limpiar_numero(item.get("contado"))
+            if c:
+                subpuntuaciones.append(normalizar(c, *rangos["precio"], invertir=True))
+
+        if subpuntuaciones:
+            item["puntuacion"] = round(sum(subpuntuaciones) / len(subpuntuaciones))
+        else:
+            item["puntuacion"] = None
+
+    return resultados
+
+def valor_potencia_cv(texto_potencia):
+    """Convierte el texto ya mostrado en la tabla ('165 kW' o '224 CV') a un
+    número en CV, solo para poder comparar contra el filtro de rango. El
+    dato que ve el usuario en la tabla/Excel NO cambia, se queda tal cual
+    lo devuelve cada proveedor -- esto es únicamente para el filtrado.
+    Si es 'N/D' devuelve None, y ese vehículo no se descarta por potencia
+    (igual que ya pasa con precio/año cuando no se puede leer el número)."""
+    if not texto_potencia:
+        return None
+    match_cv = re.search(r'(\d+)\s*CV', texto_potencia, re.IGNORECASE)
+    if match_cv:
+        return int(match_cv.group(1))
+    match_kw = re.search(r'(\d+)\s*kW', texto_potencia, re.IGNORECASE)
+    if match_kw:
+        return round(int(match_kw.group(1)) * 1.35962)
+    return None
+
+def extraer_km(texto):
+    """Busca los kilómetros ('75.950 km') en un texto ya descargado, con el
+    mismo patrón que extraer_potencia: sin peticiones nuevas, reutiliza el
+    texto ya obtenido para precio/año. Devuelve un string tipo '75.950 km'
+    o 'N/D' si no se encuentra ningún patrón reconocido."""
+    if not texto:
+        return "N/D"
+    match = re.search(r'(\d{1,3}(?:[.\s]\d{3})*)\s*km\b', texto, re.IGNORECASE)
+    if match:
+        val = limpiar_numero(match.group(1))
+        if val and 0 <= val <= 500000:
+            return f"{val:,}".replace(",", ".") + " km"
+    return "N/D"
+
 def es_modelo_legitimo(marca, slug_o_texto):
     marca_clean = marca.lower().strip()
     modelos = MODELOS_VALIDOS.get(marca_clean, [])
@@ -141,6 +248,7 @@ def scrape_autokoleccio(marca="audi", tipo="todas", max_pages=2):
 
                     url_coche = link if link.startswith('http') else f"https://www.autokoleccio.com{link}"
                     potencia = extraer_potencia(text_content)
+                    kilometros = extraer_km(text_content)
 
                     resultados.append({
                         "proveedor": "Autokolecció",
@@ -151,6 +259,7 @@ def scrape_autokoleccio(marca="audi", tipo="todas", max_pages=2):
                         "contado": contado,
                         "financiado": financiado,
                         "potencia": potencia,
+                        "kilometros": kilometros,
                         "url": url_coche
                     })
 
@@ -276,6 +385,7 @@ async def scrape_flexicar_async(marca="audi", tipo="todas", max_scrolls=4):
 
             url_coche = href if href.startswith('http') else f"https://www.flexicar.es{href}"
             potencia = extraer_potencia(slug + " " + text)
+            kilometros = extraer_km(text)
 
             resultados.append({
                 "proveedor": "Flexicar",
@@ -286,6 +396,7 @@ async def scrape_flexicar_async(marca="audi", tipo="todas", max_scrolls=4):
                 "contado": f"{precio_contado:,}".replace(",", ".") + " €",
                 "financiado": f"{precio_oferta:,}".replace(",", ".") + " €",
                 "potencia": potencia,
+                "kilometros": kilometros,
                 "url": url_coche
             })
 
@@ -370,6 +481,7 @@ async def scrape_cochesnet_async(marca="audi"):
                     anio_str = anio_match.group(1)
 
                 potencia = extraer_potencia(text)
+                kilometros = extraer_km(text)
 
                 resultados.append({
                     "proveedor": "Coches.net",
@@ -380,6 +492,7 @@ async def scrape_cochesnet_async(marca="audi"):
                     "contado": precio_str,
                     "financiado": precio_str,
                     "potencia": potencia,
+                    "kilometros": kilometros,
                     "url": url_coche
                 })
 
@@ -488,6 +601,7 @@ def scrape_cochesinternet(marca="audi", tipo="todas"):
 
                 url_coche = link if link.startswith('http') else f"https://www.cochesinternet.net{link}"
                 potencia = extraer_potencia(text_content)
+                kilometros = extraer_km(text_content)
 
                 resultados.append({
                     "proveedor": "Cochesinternet.net",
@@ -498,6 +612,7 @@ def scrape_cochesinternet(marca="audi", tipo="todas"):
                     "contado": contado,
                     "financiado": financiado,
                     "potencia": potencia,
+                    "kilometros": kilometros,
                     "url": url_coche
                 })
 
@@ -584,6 +699,7 @@ def scrape_cochescom(marca="audi", tipo="todas"):
 
                 url_coche = href if href.startswith('http') else f"https://www.coches.com{href}"
                 potencia = extraer_potencia(text)
+                kilometros = extraer_km(text)
 
                 resultados.append({
                     "proveedor": "Coches.com",
@@ -594,6 +710,7 @@ def scrape_cochescom(marca="audi", tipo="todas"):
                     "contado": f"{contado_val:,}".replace(",", ".") + " €",
                     "financiado": f"{financiado_val:,}".replace(",", ".") + " €",
                     "potencia": potencia,
+                    "kilometros": kilometros,
                     "url": url_coche
                 })
 
@@ -688,6 +805,9 @@ def scrape_ocasionplus(marca="audi", tipo="todas"):
 
                     url_coche = href if href.startswith('http') else f"https://www.ocasionplus.com{href}"
                     potencia = extraer_potencia(text_limpio)
+                    # Los km ya vienen exactos en la propia URL (con-{km}km-),
+                    # no hace falta ninguna regex adicional sobre el texto.
+                    kilometros = f"{int(km_str):,}".replace(",", ".") + " km"
 
                     resultados.append({
                         "proveedor": "OcasionPlus",
@@ -698,6 +818,7 @@ def scrape_ocasionplus(marca="audi", tipo="todas"):
                         "contado": f"{contado_val:,}".replace(",", ".") + " €",
                         "financiado": f"{financiado_val:,}".replace(",", ".") + " €",
                         "potencia": potencia,
+                        "kilometros": kilometros,
                         "url": url_coche
                     })
 
@@ -710,6 +831,123 @@ def scrape_ocasionplus(marca="audi", tipo="todas"):
             print(f"[OcasionPlus] Error en {base_url}: {e}")
 
     print(f"[OcasionPlus] Vehículos extraídos: {len(resultados)}")
+    return resultados
+
+def extraer_potencia_mibec(configuracion):
+    """Mibec expone la ficha técnica en formato schema.org (JSON-LD), mucho
+    más fiable que raspar texto libre. La potencia en kW suele venir
+    explícita (ej. '165KW'); si no aparece, se recurre al número que
+    precede a las puertas (ej. '...DHT 224 5P' -> 224 CV), patrón muy
+    consistente en las fichas de este proveedor."""
+    potencia = extraer_potencia(configuracion)
+    if potencia != "N/D":
+        return potencia
+    match_cv_puertas = re.search(r'\b(\d{2,3})\s+\dP\b', configuracion or "")
+    if match_cv_puertas:
+        return f"{match_cv_puertas.group(1)} CV"
+    return "N/D"
+
+# ================= 7. MIBEC =================
+def scrape_mibec(marca="audi", tipo="todas"):
+    """Grupo Mibec expone los datos de cada vehículo en bloques JSON-LD
+    (schema.org/Car) incrustados en el propio HTML servido por el
+    servidor -- no hace falta Playwright, con requests+regex es
+    suficiente y además es un dato estructurado, mucho más fiable que
+    el raspado de texto libre que usan el resto de proveedores."""
+    resultados = []
+    marca_clean = marca.lower().strip()
+    base_url = f"https://mibec.es/coches-ocasion/{marca_clean}"
+
+    session = requests.Session()
+    enlaces_procesados = set()
+    MAX_PAGINAS = 3
+
+    ld_json_pattern = re.compile(r'<script type="application/ld\+json">(.*?)</script>', re.DOTALL)
+    link_pattern = re.compile(r'href="(/vehiculos-detalle/[^"]+)"')
+
+    for pagina in range(1, MAX_PAGINAS + 1):
+        url_pagina = base_url if pagina == 1 else f"{base_url}?page={pagina}"
+        try:
+            res = session.get(url_pagina, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=8)
+            if res.status_code != 200:
+                break
+
+            coches_json = []
+            for bloque in ld_json_pattern.findall(res.text):
+                try:
+                    d = json.loads(bloque)
+                except Exception:
+                    continue
+                if d.get("@type") == "Car":
+                    coches_json.append(d)
+
+            if not coches_json:
+                break
+
+            # Enlaces únicos a fichas, en el mismo orden en que aparecen en
+            # el HTML (mismo orden en que aparecen los bloques JSON-LD).
+            enlaces_pagina = []
+            vistos_pagina = set()
+            for href in link_pattern.findall(res.text):
+                if href not in vistos_pagina:
+                    vistos_pagina.add(href)
+                    enlaces_pagina.append(href)
+
+            nuevos_en_esta_pagina = 0
+            for i, coche in enumerate(coches_json):
+                # Correlación por orden de aparición: el bloque JSON-LD nº i
+                # corresponde al enlace nº i. Si alguna vez no coincidieran
+                # en cantidad, se usa la URL del listado como respaldo para
+                # no perder la ficha ni romper el resultado.
+                href = enlaces_pagina[i] if i < len(enlaces_pagina) else None
+                url_coche = f"https://mibec.es{href}" if href else url_pagina
+
+                if url_coche in enlaces_procesados:
+                    continue
+                enlaces_procesados.add(url_coche)
+                nuevos_en_esta_pagina += 1
+
+                marca_real = coche.get("brand", {}).get("name", marca.capitalize())
+
+                modelo = re.sub(r'\s+', ' ', coche.get("name", "")).strip().title()
+
+                anio_val = coche.get("vehicleModelDate")
+                if not anio_val:
+                    anio_match = re.match(r'(20\d{2})', str(coche.get("dateVehicleFirstRegistered", "")))
+                    anio_val = anio_match.group(1) if anio_match else "2022"
+
+                precio = coche.get("offers", {}).get("price")
+                precio_str = f"{int(precio):,}".replace(",", ".") + " €" if precio else "Consultar"
+
+                potencia = extraer_potencia_mibec(coche.get("vehicleConfiguration", ""))
+
+                km_valor = coche.get("mileageFromOdometer", {}).get("value")
+                kilometros = f"{int(km_valor):,}".replace(",", ".") + " km" if km_valor is not None else "N/D"
+
+                condicion = coche.get("itemCondition", "")
+                categoria = "KM0" if "New" in condicion else "Ocasión"
+
+                resultados.append({
+                    "proveedor": "Mibec",
+                    "categoria": categoria,
+                    "marca": marca_real,
+                    "modelo": modelo,
+                    "anio": str(anio_val),
+                    "contado": precio_str,
+                    "financiado": precio_str,
+                    "potencia": potencia,
+                    "kilometros": kilometros,
+                    "url": url_coche
+                })
+
+            if nuevos_en_esta_pagina == 0:
+                break
+
+        except Exception as e:
+            print(f"[Mibec] Error en {url_pagina}: {e}")
+            break
+
+    print(f"[Mibec] Vehículos extraídos: {len(resultados)}")
     return resultados
 
 # ========== RUTAS FLASK ==========
@@ -732,36 +970,56 @@ def scrape():
     anio_max = data.get('anioMax')
     precio_min = data.get('precioMin')
     precio_max = data.get('precioMax')
+    potencia_min = data.get('potenciaMin')
+    potencia_max = data.get('potenciaMax')
+    km_min = data.get('kmMin')
+    km_max = data.get('kmMax')
 
     print(f"\n================ SOLICITUD DE BÚSQUEDA ================")
-    print(f"Marca: {marca} | Proveedor: '{proveedor_raw}' | Años: {anio_min}-{anio_max} | Precios: {precio_min}-{precio_max} €")
+    print(f"Marca: {marca} | Proveedor: '{proveedor_raw}' | Años: {anio_min}-{anio_max} | Precios: {precio_min}-{precio_max} € | Potencia: {potencia_min}-{potencia_max} CV | Km: {km_min}-{km_max}")
 
     todos_los_resultados = []
+    conteo_por_proveedor = {}
+
+    def _ejecutar(nombre, funcion, **kwargs):
+        """Llama a un scraper y anota cuántos resultados brutos ha traído,
+        sin alterar en nada su comportamiento. Esto es lo único que permite
+        luego avisar en el front si un proveedor concreto ha vuelto vacío."""
+        try:
+            resultados_proveedor = funcion(**kwargs)
+        except Exception as e:
+            print(f"[{nombre}] Excepción no capturada por el propio scraper: {e}")
+            resultados_proveedor = []
+        conteo_por_proveedor[nombre] = len(resultados_proveedor)
+        todos_los_resultados.extend(resultados_proveedor)
 
     if proveedor_raw == 'autokoleccio':
-        todos_los_resultados.extend(scrape_autokoleccio(marca=marca, tipo=categoria))
+        _ejecutar("Autokolecció", scrape_autokoleccio, marca=marca, tipo=categoria)
     elif proveedor_raw == 'flexicar':
-        todos_los_resultados.extend(scrape_flexicar(marca=marca))
+        _ejecutar("Flexicar", scrape_flexicar, marca=marca)
     elif proveedor_raw == 'cochesnet':
-        todos_los_resultados.extend(scrape_cochesnet(marca=marca))
+        _ejecutar("Coches.net", scrape_cochesnet, marca=marca)
     elif proveedor_raw in ['cochesinternet', 'cochesinternet.net']:
-        todos_los_resultados.extend(scrape_cochesinternet(marca=marca, tipo=categoria))
+        _ejecutar("Cochesinternet.net", scrape_cochesinternet, marca=marca, tipo=categoria)
     elif proveedor_raw in ['cochescom', 'coches.com']:
-        todos_los_resultados.extend(scrape_cochescom(marca=marca, tipo=categoria))
+        _ejecutar("Coches.com", scrape_cochescom, marca=marca, tipo=categoria)
     elif proveedor_raw == 'ocasionplus':
-
-        todos_los_resultados.extend(scrape_ocasionplus(marca=marca, tipo=categoria))
+        _ejecutar("OcasionPlus", scrape_ocasionplus, marca=marca, tipo=categoria)
+    elif proveedor_raw == 'mibec':
+        _ejecutar("Mibec", scrape_mibec, marca=marca, tipo=categoria)
     else:
-        todos_los_resultados.extend(scrape_autokoleccio(marca=marca, tipo=categoria))
-        todos_los_resultados.extend(scrape_flexicar(marca=marca))
-        todos_los_resultados.extend(scrape_cochesnet(marca=marca))
-        todos_los_resultados.extend(scrape_cochesinternet(marca=marca, tipo=categoria))
-        todos_los_resultados.extend(scrape_cochescom(marca=marca, tipo=categoria))
-        todos_los_resultados.extend(scrape_ocasionplus(marca=marca, tipo=categoria))
+        _ejecutar("Autokolecció", scrape_autokoleccio, marca=marca, tipo=categoria)
+        _ejecutar("Flexicar", scrape_flexicar, marca=marca)
+        _ejecutar("Coches.net", scrape_cochesnet, marca=marca)
+        _ejecutar("Cochesinternet.net", scrape_cochesinternet, marca=marca, tipo=categoria)
+        _ejecutar("Coches.com", scrape_cochescom, marca=marca, tipo=categoria)
+        _ejecutar("OcasionPlus", scrape_ocasionplus, marca=marca, tipo=categoria)
+        _ejecutar("Mibec", scrape_mibec, marca=marca, tipo=categoria)
 
     resultados_filtrados = []
     for item in todos_los_resultados:
         item.setdefault("potencia", "N/D")
+        item.setdefault("kilometros", "N/D")
         p_val = limpiar_numero(item.get("contado"))
         if p_val:
             if precio_min and p_val < int(precio_min):
@@ -776,15 +1034,34 @@ def scrape():
             if anio_max and a_val > int(anio_max):
                 continue
 
+        pot_val = valor_potencia_cv(item.get("potencia"))
+        if pot_val is not None:
+            if potencia_min and pot_val < int(potencia_min):
+                continue
+            if potencia_max and pot_val > int(potencia_max):
+                continue
+
+        km_val = limpiar_numero(item.get("kilometros"))
+        if km_val is not None:
+            if km_min and km_val < int(km_min):
+                continue
+            if km_max and km_val > int(km_max):
+                continue
+
         resultados_filtrados.append(item)
 
+    calcular_puntuaciones(resultados_filtrados)
+    resultados_filtrados.sort(key=lambda item: item["puntuacion"] if item["puntuacion"] is not None else -1, reverse=True)
+
     print(f"TOTAL OBTENIDOS: {len(todos_los_resultados)} | ENVIADOS TRAS FILTROS: {len(resultados_filtrados)}")
+    print(f"Desglose por proveedor: {conteo_por_proveedor}")
     print(f"========================================================\n")
 
     return jsonify({
         "status": "success",
         "total": len(resultados_filtrados),
-        "data": resultados_filtrados
+        "data": resultados_filtrados,
+        "proveedores": conteo_por_proveedor
     })
 
 if __name__ == '__main__':
