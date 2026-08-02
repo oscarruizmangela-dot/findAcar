@@ -578,6 +578,113 @@ def scrape_cochescom(marca="audi", tipo="todas"):
     print(f"[Coches.com] Vehículos extraídos: {len(resultados)}")
     return resultados
 
+# ================= 6. OCASIONPLUS =================
+def scrape_ocasionplus(marca="audi", tipo="todas"):
+    resultados = []
+    marca_clean = marca.lower().strip().replace(' ', '-')
+    # NOTA: la sección KM0 de OcasionPlus (/coches-km-0/{marca}) NO filtra
+    # por marca vía URL -- se comprobó que devuelve siempre el mismo listado
+    # genérico sin filtrar (coches de marcas variadas), sea cual sea la
+    # marca solicitada. El filtrado por marca ahí depende de JavaScript en
+    # el navegador, no de la URL, así que se desactiva para no devolver
+    # resultados de marca incorrecta. Solo se usa la sección "Ocasión"
+    # (segunda mano), que sí filtra correctamente por marca.
+    categorias = [
+        ("Ocasión", f"https://www.ocasionplus.com/coches-segunda-mano/{marca_clean}")
+    ]
+
+    session = requests.Session()
+    enlaces_procesados = set()
+
+    # El año y los km ya vienen embebidos en la propia URL de la ficha:
+    # /coches-segunda-mano/{slug}-con-{km}km-{año}-{id}
+    link_pattern = re.compile(
+        r'/coches-segunda-mano(?:-canarias)?/([a-z0-9-]+)-con-(\d+)km-(20\d{2})-[a-z0-9]+',
+        re.IGNORECASE
+    )
+
+    MAX_PAGINAS = 3  # amplía cobertura; sube este número si necesitas más resultados
+
+    for cat_label, base_url in categorias:
+        try:
+            for pagina in range(1, MAX_PAGINAS + 1):
+                url_pagina = base_url if pagina == 1 else f"{base_url}?pagina={pagina}"
+
+                res = session.get(url_pagina, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=8)
+                if res.status_code != 200:
+                    break
+
+                soup = BeautifulSoup(res.text, "html.parser")
+                car_links = soup.find_all('a', href=lambda h: h and link_pattern.search(h))
+
+                nuevos_en_esta_pagina = 0
+
+                for a in car_links:
+                    href = a['href']
+                    if href in enlaces_procesados:
+                        continue
+
+                    m = link_pattern.search(href)
+                    if not m:
+                        continue
+                    enlaces_procesados.add(href)
+                    nuevos_en_esta_pagina += 1
+
+                    slug_raw, km_str, anio_val = m.group(1), m.group(2), m.group(3)
+
+                    text = a.get_text(separator=" | ", strip=True)
+                    # Quita "Ahorro de X €" (fichas "¡A estrenar!") para que
+                    # no se confunda con un precio real.
+                    text_limpio = re.sub(r'Ahorro de\s*\d{1,3}(?:\.\d{3})*\s*€', '', text, flags=re.IGNORECASE)
+
+                    precios_validos = []
+                    for pm in re.finditer(r'(\d{1,3}(?:\.\d{3})+)\s*€', text_limpio):
+                        cola = text_limpio[pm.end():pm.end() + 10]
+                        if re.match(r'\s*/\s*mes', cola, re.IGNORECASE):
+                            continue
+                        val = limpiar_numero(pm.group(1))
+                        if val and 3000 <= val <= 200000:
+                            precios_validos.append(val)
+
+                    if not precios_validos:
+                        continue
+
+                    # Si hay descuento aplicado se muestran dos precios
+                    # (original y con descuento); si no, solo uno. El
+                    # financiado se usa como el más bajo de los dos, igual
+                    # que en el resto de proveedores.
+                    if len(precios_validos) >= 2:
+                        contado_val = max(precios_validos)
+                        financiado_val = min(precios_validos)
+                    else:
+                        contado_val = financiado_val = precios_validos[0]
+
+                    titulo = re.sub(r'\b(\d)\s(\d)\b', r'\1.\2', slug_raw.replace('-', ' ').title())
+
+                    url_coche = href if href.startswith('http') else f"https://www.ocasionplus.com{href}"
+
+                    resultados.append({
+                        "proveedor": "OcasionPlus",
+                        "categoria": cat_label,
+                        "marca": marca.capitalize(),
+                        "modelo": titulo,
+                        "anio": str(anio_val),
+                        "contado": f"{contado_val:,}".replace(",", ".") + " €",
+                        "financiado": f"{financiado_val:,}".replace(",", ".") + " €",
+                        "url": url_coche
+                    })
+
+                # Si una página no aporta ningún enlace nuevo, hemos llegado
+                # al final del listado (o a una página vacía): paramos aquí.
+                if nuevos_en_esta_pagina == 0:
+                    break
+
+        except Exception as e:
+            print(f"[OcasionPlus] Error en {base_url}: {e}")
+
+    print(f"[OcasionPlus] Vehículos extraídos: {len(resultados)}")
+    return resultados
+
 # ========== RUTAS FLASK ==========
 @app.route('/')
 def index():
@@ -614,12 +721,16 @@ def scrape():
         todos_los_resultados.extend(scrape_cochesinternet(marca=marca, tipo=categoria))
     elif proveedor_raw in ['cochescom', 'coches.com']:
         todos_los_resultados.extend(scrape_cochescom(marca=marca, tipo=categoria))
+    elif proveedor_raw == 'ocasionplus':
+
+        todos_los_resultados.extend(scrape_ocasionplus(marca=marca, tipo=categoria))
     else:
         todos_los_resultados.extend(scrape_autokoleccio(marca=marca, tipo=categoria))
         todos_los_resultados.extend(scrape_flexicar(marca=marca))
         todos_los_resultados.extend(scrape_cochesnet(marca=marca))
         todos_los_resultados.extend(scrape_cochesinternet(marca=marca, tipo=categoria))
         todos_los_resultados.extend(scrape_cochescom(marca=marca, tipo=categoria))
+        todos_los_resultados.extend(scrape_ocasionplus(marca=marca, tipo=categoria))
 
     resultados_filtrados = []
     for item in todos_los_resultados:
