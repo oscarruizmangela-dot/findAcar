@@ -1,4 +1,5 @@
 import os
+import html
 from flask import Flask, request, jsonify, send_file, make_response
 import requests
 from bs4 import BeautifulSoup
@@ -34,6 +35,20 @@ MODELOS_VALIDOS = {
     "bmw": ["118", "120", "320", "330", "520", "x1", "x2", "x3", "x4", "x5", "x6", "serie"],
     "seat": ["ibiza", "leon", "arona", "ateca", "tarraco", "toledo", "altea", "mii"],
     "volkswagen": ["golf", "polo", "passat", "tiguan", "t-roc", "t-cross", "touareg", "arteon", "taigo"]
+}
+
+# Mapea el valor recibido del selector (slug) a la etiqueta exacta que
+# devuelven extraer_combustible()/extraer_cambio() sobre cada vehículo.
+COMBUSTIBLE_MAP = {
+    "diesel": "Diésel",
+    "gasolina": "Gasolina",
+    "electrico": "Eléctrico",
+    "hibrido-enchufable": "Híbrido enchufable",
+    "hibrido-no-enchufable": "Híbrido no enchufable",
+}
+CAMBIO_MAP = {
+    "manual": "Manual",
+    "automatico": "Automático",
 }
 
 def limpiar_numero(cadena):
@@ -163,6 +178,42 @@ def extraer_km(texto):
             return f"{val:,}".replace(",", ".") + " km"
     return "N/D"
 
+def extraer_combustible(texto):
+    """Detecta la tecnología del motor (Diésel / Gasolina / Eléctrico /
+    Híbrido enchufable / Híbrido no enchufable) a partir del texto ya
+    descargado -- mismo patrón que potencia/km, sin peticiones nuevas.
+    El orden de las comprobaciones importa: se descartan primero el
+    plug-in y el eléctrico puro (que también podrían contener la palabra
+    'híbrido' o coincidir con otros patrones) antes de caer en las
+    categorías más genéricas."""
+    if not texto:
+        return "N/D"
+    t = texto.lower()
+
+    if re.search(r'h[ií]brido\s*enchufable|plug-?in|\bphev\b', t):
+        return "Híbrido enchufable"
+    if re.search(r'el[eé]ctrico|\bbev\b|100\s*%\s*el[eé]ctrico', t):
+        return "Eléctrico"
+    if re.search(r'h[ií]brido|\bhev\b|\bmhev\b|\bhybrid\b', t):
+        return "Híbrido no enchufable"
+    if re.search(r'di[eé]sel|\btdi\b|\bhdi\b|\bdci\b|\bcdti\b|bluehdi|\bcrdi\b|\bmultijet\b', t):
+        return "Diésel"
+    if re.search(r'gasolina|\btsi\b|\btfsi\b|\bvti\b|puretech|\bmpi\b|\bpetrol\b|\btce\b', t):
+        return "Gasolina"
+    return "N/D"
+
+def extraer_cambio(texto):
+    """Detecta el tipo de cambio (Manual / Automático) a partir del texto
+    ya descargado, mismo patrón que el resto de extractores adicionales."""
+    if not texto:
+        return "N/D"
+    t = texto.lower()
+    if re.search(r'autom[aá]tico|\bauto\b|\bdsg\b|\bdct\b|\bcvt\b|tiptronic|s\s?tronic|powershift|\bdht\b', t):
+        return "Automático"
+    if re.search(r'\bmanual\b', t):
+        return "Manual"
+    return "N/D"
+
 def es_modelo_legitimo(marca, slug_o_texto):
     marca_clean = marca.lower().strip()
     modelos = MODELOS_VALIDOS.get(marca_clean, [])
@@ -249,6 +300,8 @@ def scrape_autokoleccio(marca="audi", tipo="todas", max_pages=2):
                     url_coche = link if link.startswith('http') else f"https://www.autokoleccio.com{link}"
                     potencia = extraer_potencia(text_content)
                     kilometros = extraer_km(text_content)
+                    combustible = extraer_combustible(text_content)
+                    cambio = extraer_cambio(text_content)
 
                     resultados.append({
                         "proveedor": "Autokolecció",
@@ -260,6 +313,8 @@ def scrape_autokoleccio(marca="audi", tipo="todas", max_pages=2):
                         "financiado": financiado,
                         "potencia": potencia,
                         "kilometros": kilometros,
+                        "combustible": combustible,
+                        "cambio": cambio,
                         "url": url_coche
                     })
 
@@ -386,6 +441,8 @@ async def scrape_flexicar_async(marca="audi", tipo="todas", max_scrolls=4):
             url_coche = href if href.startswith('http') else f"https://www.flexicar.es{href}"
             potencia = extraer_potencia(slug + " " + text)
             kilometros = extraer_km(text)
+            combustible = extraer_combustible(slug + " " + text)
+            cambio = extraer_cambio(slug + " " + text)
 
             resultados.append({
                 "proveedor": "Flexicar",
@@ -397,6 +454,8 @@ async def scrape_flexicar_async(marca="audi", tipo="todas", max_scrolls=4):
                 "financiado": f"{precio_oferta:,}".replace(",", ".") + " €",
                 "potencia": potencia,
                 "kilometros": kilometros,
+                "combustible": combustible,
+                "cambio": cambio,
                 "url": url_coche
             })
 
@@ -482,6 +541,8 @@ async def scrape_cochesnet_async(marca="audi"):
 
                 potencia = extraer_potencia(text)
                 kilometros = extraer_km(text)
+                combustible = extraer_combustible(text)
+                cambio = extraer_cambio(text)
 
                 resultados.append({
                     "proveedor": "Coches.net",
@@ -493,6 +554,8 @@ async def scrape_cochesnet_async(marca="audi"):
                     "financiado": precio_str,
                     "potencia": potencia,
                     "kilometros": kilometros,
+                    "combustible": combustible,
+                    "cambio": cambio,
                     "url": url_coche
                 })
 
@@ -602,6 +665,8 @@ def scrape_cochesinternet(marca="audi", tipo="todas"):
                 url_coche = link if link.startswith('http') else f"https://www.cochesinternet.net{link}"
                 potencia = extraer_potencia(text_content)
                 kilometros = extraer_km(text_content)
+                combustible = extraer_combustible(text_content)
+                cambio = extraer_cambio(text_content)
 
                 resultados.append({
                     "proveedor": "Cochesinternet.net",
@@ -613,6 +678,8 @@ def scrape_cochesinternet(marca="audi", tipo="todas"):
                     "financiado": financiado,
                     "potencia": potencia,
                     "kilometros": kilometros,
+                    "combustible": combustible,
+                    "cambio": cambio,
                     "url": url_coche
                 })
 
@@ -700,6 +767,8 @@ def scrape_cochescom(marca="audi", tipo="todas"):
                 url_coche = href if href.startswith('http') else f"https://www.coches.com{href}"
                 potencia = extraer_potencia(text)
                 kilometros = extraer_km(text)
+                combustible = extraer_combustible(text)
+                cambio = extraer_cambio(text)
 
                 resultados.append({
                     "proveedor": "Coches.com",
@@ -711,6 +780,8 @@ def scrape_cochescom(marca="audi", tipo="todas"):
                     "financiado": f"{financiado_val:,}".replace(",", ".") + " €",
                     "potencia": potencia,
                     "kilometros": kilometros,
+                    "combustible": combustible,
+                    "cambio": cambio,
                     "url": url_coche
                 })
 
@@ -808,6 +879,8 @@ def scrape_ocasionplus(marca="audi", tipo="todas"):
                     # Los km ya vienen exactos en la propia URL (con-{km}km-),
                     # no hace falta ninguna regex adicional sobre el texto.
                     kilometros = f"{int(km_str):,}".replace(",", ".") + " km"
+                    combustible = extraer_combustible(text_limpio)
+                    cambio = extraer_cambio(text_limpio)
 
                     resultados.append({
                         "proveedor": "OcasionPlus",
@@ -819,6 +892,8 @@ def scrape_ocasionplus(marca="audi", tipo="todas"):
                         "financiado": f"{financiado_val:,}".replace(",", ".") + " €",
                         "potencia": potencia,
                         "kilometros": kilometros,
+                        "combustible": combustible,
+                        "cambio": cambio,
                         "url": url_coche
                     })
 
@@ -923,6 +998,8 @@ def scrape_mibec(marca="audi", tipo="todas"):
 
                 km_valor = coche.get("mileageFromOdometer", {}).get("value")
                 kilometros = f"{int(km_valor):,}".replace(",", ".") + " km" if km_valor is not None else "N/D"
+                combustible = extraer_combustible(coche.get("vehicleConfiguration", ""))
+                cambio = extraer_cambio(coche.get("vehicleConfiguration", ""))
 
                 condicion = coche.get("itemCondition", "")
                 categoria = "KM0" if "New" in condicion else "Ocasión"
@@ -937,6 +1014,8 @@ def scrape_mibec(marca="audi", tipo="todas"):
                     "financiado": precio_str,
                     "potencia": potencia,
                     "kilometros": kilometros,
+                    "combustible": combustible,
+                    "cambio": cambio,
                     "url": url_coche
                 })
 
@@ -949,6 +1028,252 @@ def scrape_mibec(marca="audi", tipo="todas"):
 
     print(f"[Mibec] Vehículos extraídos: {len(resultados)}")
     return resultados
+
+# ================= 8. CLICARS =================
+def scrape_clicars(marca="audi", tipo="todas"):
+    """Clicars expone toda la ficha -- marca, versión, año, km, potencia,
+    cambio y combustible -- directamente en clases y atributos data-* del
+    propio HTML servido por el servidor (ej. <span class="fuelName">,
+    data-price-web-offer="..."). No hace falta Playwright, con requests
+    es suficiente, y reutiliza los mismos extractores genéricos
+    (potencia/km/cambio/combustible) que el resto de proveedores."""
+    resultados = []
+    marca_clean = marca.lower().strip().replace(' ', '-')
+    base_url = f"https://www.clicars.com/coches-segunda-mano-ocasion/{marca_clean}"
+
+    session = requests.Session()
+    enlaces_procesados = set()
+    MAX_PAGINAS = 3
+
+    for pagina in range(1, MAX_PAGINAS + 1):
+        url_pagina = base_url if pagina == 1 else f"{base_url}?page={pagina}"
+        try:
+            res = session.get(url_pagina, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=8)
+            if res.status_code != 200:
+                break
+
+            texto = res.text
+            # Cada ficha empieza en un <article data-vehicle-web-id="...">;
+            # se trocea el HTML por esos puntos para no mezclar los datos
+            # de una ficha con los de la siguiente.
+            starts = [m.start() for m in re.finditer(r'<article\s+data-vehicle-web-id="\d+"', texto)]
+            if not starts:
+                break
+            starts.append(len(texto))
+
+            nuevos_en_esta_pagina = 0
+            for i in range(len(starts) - 1):
+                bloque = texto[starts[i]:starts[i + 1]]
+
+                href_m = re.search(r'href="(https://www\.clicars\.com/coches-segunda-mano-ocasion/[^"]+)"', bloque)
+                if not href_m:
+                    continue
+                url_coche = href_m.group(1)
+                if url_coche in enlaces_procesados:
+                    continue
+                enlaces_procesados.add(url_coche)
+                nuevos_en_esta_pagina += 1
+
+                maker_m = re.search(r'<h2 class="maker ellipsis"><strong>([^<]+)</strong>', bloque)
+                version_m = re.search(r'<span class="version ellipsis">([^<]+)</span>', bloque)
+                info_m = re.search(r'<span class="info ellipsis">\s*([^<]+)</span>', bloque)
+                fuel_m = re.search(r'<span class="fuelName">([^<]+)</span>', bloque)
+
+                marca_real = marca.capitalize()
+                maker_texto = html.unescape(maker_m.group(1)).strip() if maker_m else marca_real
+                version = html.unescape(version_m.group(1)).strip() if version_m else ""
+                modelo = f"{maker_texto} {version}".strip()
+
+                # El año, los km, la potencia y el cambio vienen juntos en
+                # la propia línea "info" (ej. "2015 | 105.332km | 69CV |
+                # Manual"), así que se reutilizan los mismos extractores
+                # genéricos ya usados por el resto de proveedores.
+                info_texto = info_m.group(1) if info_m else ""
+                anio_match = re.search(r'\b(20\d{2})\b', info_texto)
+                anio_val = anio_match.group(1) if anio_match else "2020"
+
+                potencia = extraer_potencia(info_texto)
+                kilometros = extraer_km(info_texto)
+                cambio = extraer_cambio(info_texto)
+                combustible = extraer_combustible(fuel_m.group(1)) if fuel_m else extraer_combustible(bloque)
+
+                precio_oferta = re.search(r'data-price-web-offer="([\d.]+)€"', bloque)
+                precio_web = re.search(r'data-price-web="([\d.]+)€"', bloque)
+                precio_financ = re.search(r'data-price-financing="([\d.]+)€"', bloque)
+
+                contado_val = limpiar_numero(precio_oferta.group(1)) if precio_oferta else (
+                    limpiar_numero(precio_web.group(1)) if precio_web else None)
+                if not contado_val:
+                    continue
+                financiado_val = limpiar_numero(precio_financ.group(1)) if precio_financ else contado_val
+
+                resultados.append({
+                    "proveedor": "Clicars",
+                    "categoria": "Ocasión",
+                    "marca": marca_real,
+                    "modelo": modelo,
+                    "anio": anio_val,
+                    "contado": f"{contado_val:,}".replace(",", ".") + " €",
+                    "financiado": f"{financiado_val:,}".replace(",", ".") + " €",
+                    "potencia": potencia,
+                    "kilometros": kilometros,
+                    "combustible": combustible,
+                    "cambio": cambio,
+                    "url": url_coche
+                })
+
+            if nuevos_en_esta_pagina == 0:
+                break
+
+        except Exception as e:
+            print(f"[Clicars] Error en {url_pagina}: {e}")
+            break
+
+    print(f"[Clicars] Vehículos extraídos: {len(resultados)}")
+    return resultados
+
+# ================= 9. SPOTICAR =================
+async def scrape_spoticar_async(marca="audi", tipo="todas", max_paginas=3):
+    """Spoticar (red de coches de ocasión de concesionarios oficiales del
+    grupo Stellantis: Peugeot, Citroën, Opel...) carga el listado de
+    vehículos vía JavaScript -- el HTML servido inicialmente llega vacío,
+    hace falta Playwright para que se renderice, igual que en Flexicar y
+    Coches.net.
+
+    NOTA sobre el filtro de marca: no se ha podido verificar en vivo por
+    no tener acceso de red a spoticar.es desde este entorno. Se ha
+    construido por analogía con el patrón de filtro de categoría que sí
+    aparece confirmado en el propio HTML de la web
+    (?filters[0][category]=...), aplicándolo aquí a 'brand'. Si esta
+    suposición fuera incorrecta, el scraper simplemente no encontrará
+    marca en las tarjetas y devolverá 0 resultados (no fallos ni datos
+    erróneos) -- conviene probarlo primero de forma aislada."""
+    resultados = []
+    marca_clean = marca.lower().strip()
+    vistas = set()
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
+            )
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                viewport={"width": 1920, "height": 1080},
+                locale="es-ES"
+            )
+            page = await context.new_page()
+            await page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+            for pagina in range(1, max_paginas + 1):
+                target_url = (
+                    f"https://www.spoticar.es/comprar-coches-de-ocasion"
+                    f"?page={pagina}&filters%5B0%5D%5Bbrand%5D={marca_clean}"
+                )
+
+                print(f"[Spoticar] Cargando: {target_url}")
+                try:
+                    await page.goto(target_url, wait_until="domcontentloaded", timeout=25000)
+                except Exception as e:
+                    print(f"[Spoticar] Timeout/navegación: {e}")
+                    break
+
+                for selector in ["#onetrust-accept-btn-handler", "button:has-text('Aceptar')", "button:has-text('ACEPTAR')"]:
+                    try:
+                        btn = page.locator(selector).first
+                        if await btn.is_visible(timeout=2000):
+                            await btn.click()
+                            break
+                    except Exception:
+                        pass
+
+                await page.wait_for_timeout(2500)
+                for _ in range(3):
+                    await page.evaluate("window.scrollBy(0, document.body.scrollHeight/4)")
+                    await page.wait_for_timeout(800)
+
+                content = await page.content()
+                soup = BeautifulSoup(content, "html.parser")
+
+                # Solo tarjetas reales del listado -- se excluye la carrusel
+                # "home-teaser" que aparece en la página de inicio, para no
+                # confundirla con resultados de búsqueda de verdad.
+                cards = [
+                    c for c in soup.find_all('div', class_='vehicle-card')
+                    if 'home-teaser' not in (c.get('class') or [])
+                ]
+
+                if not cards:
+                    break
+
+                nuevos_en_esta_pagina = 0
+                for card in cards:
+                    link_tag = card.find('a', class_='vehicle-card-link') or card.find('a', class_='vehicle-images-link')
+                    if not link_tag or not link_tag.get('href'):
+                        continue
+                    href = link_tag['href']
+                    if href in vistas:
+                        continue
+
+                    titulo_tag = card.find('h3')
+                    if not titulo_tag:
+                        continue
+                    modelo_base = titulo_tag.contents[0].strip() if titulo_tag.contents else titulo_tag.get_text(strip=True)
+                    version_tag = titulo_tag.find('span', class_='car-version')
+                    version = version_tag.get_text(strip=True) if version_tag else ""
+                    titulo = f"{modelo_base} {version}".strip()
+
+                    if marca_clean not in titulo.lower() and marca_clean not in href.lower():
+                        continue
+
+                    vistas.add(href)
+                    nuevos_en_esta_pagina += 1
+
+                    tags = [t.get_text(strip=True) for t in card.select('.vehicle-card-tags .tag')]
+                    texto_tags = " | ".join(tags)
+
+                    precio_tag = card.find('span', class_='price-value')
+                    contado_val = limpiar_numero(precio_tag.get_text()) if precio_tag else None
+                    if not contado_val:
+                        continue
+                    financiado_tag = card.find('span', class_='price-finance-value')
+                    financiado_val = limpiar_numero(financiado_tag.get_text()) if financiado_tag else contado_val
+
+                    anio_match = re.search(r'\b(20\d{2})\b', texto_tags)
+                    anio_val = anio_match.group(1) if anio_match else "2022"
+
+                    url_coche = href if href.startswith('http') else f"https://www.spoticar.es{href}"
+
+                    resultados.append({
+                        "proveedor": "Spoticar",
+                        "categoria": "Ocasión",
+                        "marca": marca.capitalize(),
+                        "modelo": titulo,
+                        "anio": anio_val,
+                        "contado": f"{contado_val:,}".replace(",", ".") + " €",
+                        "financiado": f"{financiado_val:,}".replace(",", ".") + " €",
+                        "potencia": extraer_potencia(titulo + " " + href),
+                        "kilometros": extraer_km(texto_tags),
+                        "combustible": extraer_combustible(texto_tags),
+                        "cambio": extraer_cambio(texto_tags),
+                        "url": url_coche
+                    })
+
+                if nuevos_en_esta_pagina == 0:
+                    break
+
+            await browser.close()
+
+    except Exception as e:
+        print(f"[Spoticar] Error durante scraping: {e}")
+
+    print(f"[Spoticar] Vehículos extraídos: {len(resultados)}")
+    return resultados
+
+
+def scrape_spoticar(marca="audi", tipo="todas"):
+    return asyncio.run(scrape_spoticar_async(marca=marca, tipo=tipo))
 
 # ========== RUTAS FLASK ==========
 @app.route('/')
@@ -974,9 +1299,11 @@ def scrape():
     potencia_max = data.get('potenciaMax')
     km_min = data.get('kmMin')
     km_max = data.get('kmMax')
+    combustible_filtro = str(data.get('combustible', 'todas')).lower().strip()
+    cambio_filtro = str(data.get('cambio', 'todos')).lower().strip()
 
     print(f"\n================ SOLICITUD DE BÚSQUEDA ================")
-    print(f"Marca: {marca} | Proveedor: '{proveedor_raw}' | Años: {anio_min}-{anio_max} | Precios: {precio_min}-{precio_max} € | Potencia: {potencia_min}-{potencia_max} CV | Km: {km_min}-{km_max}")
+    print(f"Marca: {marca} | Proveedor: '{proveedor_raw}' | Años: {anio_min}-{anio_max} | Precios: {precio_min}-{precio_max} € | Potencia: {potencia_min}-{potencia_max} CV | Km: {km_min}-{km_max} | Combustible: {combustible_filtro} | Cambio: {cambio_filtro}")
 
     todos_los_resultados = []
     conteo_por_proveedor = {}
@@ -1007,6 +1334,10 @@ def scrape():
         _ejecutar("OcasionPlus", scrape_ocasionplus, marca=marca, tipo=categoria)
     elif proveedor_raw == 'mibec':
         _ejecutar("Mibec", scrape_mibec, marca=marca, tipo=categoria)
+    elif proveedor_raw == 'clicars':
+        _ejecutar("Clicars", scrape_clicars, marca=marca, tipo=categoria)
+    elif proveedor_raw == 'spoticar':
+        _ejecutar("Spoticar", scrape_spoticar, marca=marca, tipo=categoria)
     else:
         _ejecutar("Autokolecció", scrape_autokoleccio, marca=marca, tipo=categoria)
         _ejecutar("Flexicar", scrape_flexicar, marca=marca)
@@ -1015,11 +1346,15 @@ def scrape():
         _ejecutar("Coches.com", scrape_cochescom, marca=marca, tipo=categoria)
         _ejecutar("OcasionPlus", scrape_ocasionplus, marca=marca, tipo=categoria)
         _ejecutar("Mibec", scrape_mibec, marca=marca, tipo=categoria)
+        _ejecutar("Clicars", scrape_clicars, marca=marca, tipo=categoria)
+        _ejecutar("Spoticar", scrape_spoticar, marca=marca, tipo=categoria)
 
     resultados_filtrados = []
     for item in todos_los_resultados:
         item.setdefault("potencia", "N/D")
         item.setdefault("kilometros", "N/D")
+        item.setdefault("combustible", "N/D")
+        item.setdefault("cambio", "N/D")
         p_val = limpiar_numero(item.get("contado"))
         if p_val:
             if precio_min and p_val < int(precio_min):
@@ -1046,6 +1381,16 @@ def scrape():
             if km_min and km_val < int(km_min):
                 continue
             if km_max and km_val > int(km_max):
+                continue
+
+        if combustible_filtro not in ("todas", "todos", ""):
+            etiqueta_esperada = COMBUSTIBLE_MAP.get(combustible_filtro)
+            if etiqueta_esperada and item.get("combustible") != etiqueta_esperada:
+                continue
+
+        if cambio_filtro not in ("todas", "todos", ""):
+            etiqueta_esperada_cambio = CAMBIO_MAP.get(cambio_filtro)
+            if etiqueta_esperada_cambio and item.get("cambio") != etiqueta_esperada_cambio:
                 continue
 
         resultados_filtrados.append(item)

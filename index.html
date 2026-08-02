@@ -117,6 +117,8 @@
         .source-dot.c5 { background: #6B4C9A; }
         .source-dot.c6 { background: #2A7A4F; }
         .source-dot.c7 { background: #B0223D; }
+        .source-dot.c8 { background: #6B4FA0; }
+        .source-dot.c9 { background: #B8860B; }
 
         /* ============ SELECTOR DE IDIOMA ============ */
         .header-top {
@@ -208,12 +210,15 @@
         /* ============ SELECTOR DE CATEGORÍA (SEGMENTADO) ============ */
         .segmented-control {
             display: flex;
+            flex-wrap: wrap;
             background-color: var(--paper);
             border: 1px solid var(--line);
             border-radius: 8px;
             padding: 3px;
             gap: 3px;
         }
+
+        .form-group.full-width { grid-column: 1 / -1; }
 
         .segment-btn {
             flex: 1;
@@ -429,7 +434,7 @@
         }
 
         /* Precios y año en mono con cifras tabulares, como un cuentakilómetros */
-        td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(8) {
+        td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(10), td:nth-child(11) {
             font-family: var(--font-mono);
             font-variant-numeric: tabular-nums;
             font-size: 0.88em;
@@ -511,7 +516,7 @@
 <div class="container">
     <div class="header-bar">
         <div class="header-top">
-            <p class="eyebrow" data-i18n="eyebrow">Buscador multi-fuente · 7 portales en vivo</p>
+            <p class="eyebrow" data-i18n="eyebrow">Buscador multi-fuente · 9 portales en vivo</p>
             <div class="lang-switch">
                 <button type="button" class="lang-btn" data-lang="es" onclick="cambiarIdioma('es')">ES</button>
                 <button type="button" class="lang-btn" data-lang="ca" onclick="cambiarIdioma('ca')">CA</button>
@@ -527,6 +532,8 @@
             <span class="source-chip"><span class="source-dot c5"></span>Coches.com</span>
             <span class="source-chip"><span class="source-dot c6"></span>OcasionPlus</span>
             <span class="source-chip"><span class="source-dot c7"></span>Mibec</span>
+            <span class="source-chip"><span class="source-dot c8"></span>Clicars</span>
+            <span class="source-chip"><span class="source-dot c9"></span>Spoticar</span>
         </div>
     </div>
 
@@ -575,7 +582,7 @@
             <div class="form-group">
                 <label for="proveedorSelect" data-i18n="labelProveedor">Proveedor B2C:</label>
                 <select id="proveedorSelect">
-                    <option value="todos" data-i18n="provTodos">Todos (7 Fuentes)</option>
+                    <option value="todos" data-i18n="provTodos">Todos (9 Fuentes)</option>
                     <option value="autokoleccio">Autokolecció</option>
                     <option value="flexicar">Flexicar</option>
                     <option value="cochesnet">Coches.net</option>
@@ -583,7 +590,32 @@
                     <option value="cochescom">Coches.com</option>
                     <option value="ocasionplus">OcasionPlus</option>
                     <option value="mibec">Mibec</option>
+                    <option value="clicars">Clicars</option>
+                    <option value="spoticar">Spoticar</option>
                 </select>
+            </div>
+
+            <!-- Cambio -->
+            <div class="form-group">
+                <label data-i18n="labelCambio">Cambio:</label>
+                <div class="segmented-control" id="cambioControl" role="group">
+                    <button type="button" class="segment-btn active" data-valor="todos" data-i18n="cambioTodos" onclick="seleccionarCambio('todos', this)">Todos</button>
+                    <button type="button" class="segment-btn" data-valor="manual" data-i18n="cambioManual" onclick="seleccionarCambio('manual', this)">Manual</button>
+                    <button type="button" class="segment-btn" data-valor="automatico" data-i18n="cambioAutomatico" onclick="seleccionarCambio('automatico', this)">Automático</button>
+                </div>
+            </div>
+
+            <!-- Tecnología / Combustible -->
+            <div class="form-group full-width">
+                <label data-i18n="labelCombustible">Tecnología:</label>
+                <div class="segmented-control" id="combustibleControl" role="group">
+                    <button type="button" class="segment-btn active" data-valor="todas" data-i18n="combTodas" onclick="seleccionarCombustible('todas', this)">Todas</button>
+                    <button type="button" class="segment-btn" data-valor="diesel" data-i18n="combDiesel" onclick="seleccionarCombustible('diesel', this)">Diésel</button>
+                    <button type="button" class="segment-btn" data-valor="gasolina" data-i18n="combGasolina" onclick="seleccionarCombustible('gasolina', this)">Gasolina</button>
+                    <button type="button" class="segment-btn" data-valor="electrico" data-i18n="combElectrico" onclick="seleccionarCombustible('electrico', this)">Eléctrico</button>
+                    <button type="button" class="segment-btn" data-valor="hibrido-enchufable" data-i18n="combHibridoEnchufable" onclick="seleccionarCombustible('hibrido-enchufable', this)">Híbrido enchufable</button>
+                    <button type="button" class="segment-btn" data-valor="hibrido-no-enchufable" data-i18n="combHibridoNoEnchufable" onclick="seleccionarCombustible('hibrido-no-enchufable', this)">Híbrido no enchufable</button>
+                </div>
             </div>
         </div>
 
@@ -672,6 +704,8 @@
                     <th data-i18n="thAnio">Año</th>
                     <th data-i18n="thKm">Kilómetros</th>
                     <th data-i18n="thPotencia">Potencia</th>
+                    <th data-i18n="thCombustible">Combustible</th>
+                    <th data-i18n="thCambio">Cambio</th>
                     <th data-i18n="thContado">Precio Contado</th>
                     <th data-i18n="thFinanciado">Precio Financiado</th>
                     <th data-i18n="thPuntuacion">Puntuación</th>
@@ -679,7 +713,7 @@
             </thead>
             <tbody id="tablaResultados">
                 <tr>
-                    <td colspan="10" style="text-align:center; color: #8A94A0; padding: 32px 18px;" data-i18n="msgInicial">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
+                    <td colspan="12" style="text-align:center; color: #8A94A0; padding: 32px 18px;" data-i18n="msgInicial">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
                 </tr>
             </tbody>
         </table>
@@ -696,7 +730,7 @@ let ultimosResultados = [];
 const I18N = {
     es: {
         title: "Buscador de Vehículos Multi-Fuente",
-        eyebrow: "Buscador multi-fuente · 7 portales en vivo",
+        eyebrow: "Buscador multi-fuente · 9 portales en vivo",
         h1: "Buscador de Vehículos (KM0 / Segunda Mano)",
         sub: "Filtra por marca, año y precio y encuentra al instante lo que ofrecen los principales portales de coches de segunda mano y KM0 en España.",
         labelMarca: "Marca:",
@@ -704,7 +738,18 @@ const I18N = {
         catTodas: "Todas",
         catOcasion: "Ocasión",
         labelProveedor: "Proveedor B2C:",
-        provTodos: "Todos (7 Fuentes)",
+        provTodos: "Todos (9 Fuentes)",
+        labelCambio: "Cambio:",
+        cambioTodos: "Todos",
+        cambioManual: "Manual",
+        cambioAutomatico: "Automático",
+        labelCombustible: "Tecnología:",
+        combTodas: "Todas",
+        combDiesel: "Diésel",
+        combGasolina: "Gasolina",
+        combElectrico: "Eléctrico",
+        combHibridoEnchufable: "Híbrido enchufable",
+        combHibridoNoEnchufable: "Híbrido no enchufable",
         labelRangoAnio: "Rango de Año:",
         labelRangoPrecio: "Rango de Precio (€):",
         labelRangoPotencia: "Rango de Potencia (CV):",
@@ -721,6 +766,8 @@ const I18N = {
         thAnio: "Año",
         thKm: "Kilómetros",
         thPotencia: "Potencia",
+        thCombustible: "Combustible",
+        thCambio: "Cambio",
         thContado: "Precio Contado",
         thFinanciado: "Precio Financiado",
         thPuntuacion: "Puntuación",
@@ -732,7 +779,7 @@ const I18N = {
     },
     ca: {
         title: "Cercador de Vehicles Multi-Font",
-        eyebrow: "Cercador multi-font · 7 portals en viu",
+        eyebrow: "Cercador multi-font · 9 portals en viu",
         h1: "Cercador de Vehicles (KM0 / Segona Mà)",
         sub: "Filtra per marca, any i preu i troba a l'instant el que ofereixen els principals portals de cotxes de segona mà i KM0 a Espanya.",
         labelMarca: "Marca:",
@@ -740,7 +787,18 @@ const I18N = {
         catTodas: "Totes",
         catOcasion: "Ocasió",
         labelProveedor: "Proveïdor B2C:",
-        provTodos: "Tots (7 Fonts)",
+        provTodos: "Tots (9 Fonts)",
+        labelCambio: "Canvi:",
+        cambioTodos: "Tots",
+        cambioManual: "Manual",
+        cambioAutomatico: "Automàtic",
+        labelCombustible: "Tecnologia:",
+        combTodas: "Totes",
+        combDiesel: "Dièsel",
+        combGasolina: "Gasolina",
+        combElectrico: "Elèctric",
+        combHibridoEnchufable: "Híbrid endollable",
+        combHibridoNoEnchufable: "Híbrid no endollable",
         labelRangoAnio: "Rang d'Any:",
         labelRangoPrecio: "Rang de Preu (€):",
         labelRangoPotencia: "Rang de Potència (CV):",
@@ -757,6 +815,8 @@ const I18N = {
         thAnio: "Any",
         thKm: "Quilòmetres",
         thPotencia: "Potència",
+        thCombustible: "Combustible",
+        thCambio: "Canvi",
         thContado: "Preu Comptat",
         thFinanciado: "Preu Finançat",
         thPuntuacion: "Puntuació",
@@ -796,6 +856,21 @@ let categoriaSeleccionada = 'todas';
 function seleccionarCategoria(valor, btn) {
     categoriaSeleccionada = valor;
     document.querySelectorAll('#categoriaControl .segment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+// Tipo de cambio y tecnología/combustible, mismo patrón que categoría
+let cambioSeleccionado = 'todos';
+function seleccionarCambio(valor, btn) {
+    cambioSeleccionado = valor;
+    document.querySelectorAll('#cambioControl .segment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+let combustibleSeleccionado = 'todas';
+function seleccionarCombustible(valor, btn) {
+    combustibleSeleccionado = valor;
+    document.querySelectorAll('#combustibleControl .segment-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
 }
 
@@ -948,7 +1023,7 @@ async function buscarCoches() {
     const badgeCount = document.getElementById('numCoches');
     const btnExportar = document.getElementById('btnExportar');
 
-    tabla.innerHTML = `<tr><td colspan="10" style="text-align:center;">${I18N[idiomaActual].msgCargando}</td></tr>`;
+    tabla.innerHTML = `<tr><td colspan="12" style="text-align:center;">${I18N[idiomaActual].msgCargando}</td></tr>`;
     badgeCount.textContent = "...";
     btnExportar.disabled = true;
     renderAvisosProveedor(null);
@@ -964,7 +1039,9 @@ async function buscarCoches() {
         potenciaMin: document.getElementById('potenciaMin').value,
         potenciaMax: document.getElementById('potenciaMax').value,
         kmMin: document.getElementById('kmMin').value,
-        kmMax: document.getElementById('kmMax').value
+        kmMax: document.getElementById('kmMax').value,
+        combustible: combustibleSeleccionado,
+        cambio: cambioSeleccionado
     };
 
     try {
@@ -983,7 +1060,7 @@ async function buscarCoches() {
         renderAvisosProveedor(resData.proveedores);
 
         if (total === 0) {
-            tabla.innerHTML = `<tr><td colspan="10" style="text-align:center;">${I18N[idiomaActual].msgSinResultados}</td></tr>`;
+            tabla.innerHTML = `<tr><td colspan="12" style="text-align:center;">${I18N[idiomaActual].msgSinResultados}</td></tr>`;
             return;
         }
 
@@ -1000,6 +1077,8 @@ async function buscarCoches() {
                 <td>${item.anio}</td>
                 <td>${item.kilometros || 'N/D'}</td>
                 <td>${item.potencia || 'N/D'}</td>
+                <td>${item.combustible || 'N/D'}</td>
+                <td>${item.cambio || 'N/D'}</td>
                 <td><strong>${item.contado}</strong></td>
                 <td><strong>${item.financiado}</strong></td>
                 <td>${renderPuntuacion(item.puntuacion)}</td>
@@ -1010,7 +1089,7 @@ async function buscarCoches() {
         badgeCount.textContent = "0";
         ultimosResultados = [];
         btnExportar.disabled = true;
-        tabla.innerHTML = `<tr><td colspan="10" style="text-align:center; color: red;">${I18N[idiomaActual].msgError}</td></tr>`;
+        tabla.innerHTML = `<tr><td colspan="12" style="text-align:center; color: red;">${I18N[idiomaActual].msgError}</td></tr>`;
     }
 }
 
@@ -1051,6 +1130,8 @@ function exportarExcel() {
         'Año': item.anio,
         'Kilómetros': item.kilometros || 'N/D',
         'Potencia': item.potencia || 'N/D',
+        'Combustible': item.combustible || 'N/D',
+        'Cambio': item.cambio || 'N/D',
         'Precio Contado': item.contado,
         'Precio Financiado': item.financiado,
         'Puntuación': item.puntuacion !== null && item.puntuacion !== undefined ? item.puntuacion : 'N/D',
@@ -1060,7 +1141,8 @@ function exportarExcel() {
     const hoja = XLSX.utils.json_to_sheet(filas);
     hoja['!cols'] = [
         { wch: 18 }, { wch: 10 }, { wch: 12 }, { wch: 42 },
-        { wch: 6 }, { wch: 12 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 11 }, { wch: 55 }
+        { wch: 6 }, { wch: 12 }, { wch: 10 }, { wch: 20 }, { wch: 12 },
+        { wch: 14 }, { wch: 16 }, { wch: 11 }, { wch: 55 }
     ];
 
     const libro = XLSX.utils.book_new();
