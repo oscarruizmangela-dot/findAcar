@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Vehículos Multi-Fuente</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #12181F;
+            --paper: #F6F5F1;
+            --panel: #FFFFFF;
+            --line: #E4E1D8;
+            --steel: #55636F;
+            --steel-soft: #8A94A0;
+            --signal: #C6491E;
+            --signal-soft: #F2DACE;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+        }
+
+        * { box-sizing: border-box; }
+
+        html { -webkit-text-size-adjust: 100%; }
+
+        body {
+            background-color: var(--paper);
+            margin: 0;
+            padding: 48px 32px 80px;
+            color: var(--ink);
+            font-family: var(--font-body);
+            line-height: 1.5;
+        }
+
+        .container { max-width: 1240px; margin: 0 auto; }
+
+        /* ============ CABECERA ============ */
+        .header-bar { margin-bottom: 36px; }
+
+        .eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-mono);
+            font-size: 0.72em;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--signal);
+            margin-bottom: 14px;
+        }
+
+        .eyebrow::before {
+            content: "";
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--signal);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .eyebrow::before { animation: pulse 2.4s ease-in-out infinite; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(0.75); }
+        }
+
+        h1 {
+            font-family: var(--font-display);
+            color: var(--ink);
+            margin: 0 0 8px;
+            font-size: 2.15em;
+            font-weight: 700;
+            letter-spacing: -0.015em;
+            line-height: 1.15;
+        }
+
+        .header-sub {
+            color: var(--steel);
+            font-size: 1em;
+            margin: 0 0 22px;
+            max-width: 560px;
+        }
+
+        /* Leyenda de fuentes: elemento firma, no decoración —
+           dice exactamente qué 4 portales consulta la herramienta */
+        .source-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .source-chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 100px;
+            padding: 6px 14px 6px 10px;
+            font-size: 0.82em;
+            font-weight: 500;
+            color: var(--steel);
+        }
+
+        .source-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .source-dot.c1 { background: #C6491E; }
+        .source-dot.c2 { background: #1C6E63; }
+        .source-dot.c3 { background: #2A5CAA; }
+        .source-dot.c4 { background: #8A5A2E; }
+        .source-dot.c5 { background: #6B4C9A; }
+
+        /* ============ TARJETA DE FILTROS ============ */
+        .filter-card {
+            background: var(--panel);
+            padding: 28px 28px 24px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            box-shadow: 0 1px 2px rgba(18, 24, 31, 0.04);
+            margin-bottom: 32px;
+        }
+
+        .grid-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 22px;
+            margin-bottom: 22px;
+        }
+
+        .form-group { display: flex; flex-direction: column; }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 9px;
+            font-size: 0.82em;
+            letter-spacing: 0.02em;
+            color: var(--ink);
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        label span:last-child {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            color: var(--signal);
+            font-size: 0.95em;
+        }
+
+        select, input[type="text"] {
+            padding: 11px 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-family: var(--font-body);
+            background-color: var(--panel);
+            color: var(--ink);
+            transition: border-color 0.15s ease;
+        }
+
+        select:hover, input[type="text"]:hover { border-color: var(--steel-soft); }
+
+        select:focus-visible, input:focus-visible, button:focus-visible, a:focus-visible {
+            outline: 2px solid var(--signal);
+            outline-offset: 2px;
+        }
+
+        /* ============ DOBLE SLIDER ============ */
+        .range-slider-container {
+            position: relative;
+            width: 100%;
+            height: 35px;
+            display: flex;
+            align-items: center;
+        }
+
+        .range-slider-container input[type="range"] {
+            position: absolute;
+            pointer-events: none;
+            -webkit-appearance: none;
+            appearance: none;
+            z-index: 2;
+            height: 0;
+            width: 100%;
+            margin: 0;
+            outline: none;
+            background: transparent;
+        }
+
+        .range-slider-container input[type="range"]::-webkit-slider-thumb {
+            pointer-events: all;
+            width: 17px;
+            height: 17px;
+            border-radius: 50%;
+            background: var(--panel);
+            border: 3px solid var(--signal);
+            cursor: pointer;
+            -webkit-appearance: none;
+            box-shadow: 0 1px 3px rgba(18, 24, 31, 0.25);
+        }
+
+        .range-slider-container input[type="range"]::-moz-range-thumb {
+            pointer-events: all;
+            width: 17px;
+            height: 17px;
+            border-radius: 50%;
+            background: var(--panel);
+            border: 3px solid var(--signal);
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(18, 24, 31, 0.25);
+        }
+
+        .slider-track {
+            position: absolute;
+            height: 4px;
+            border-radius: 3px;
+            background-color: var(--line);
+            width: 100%;
+            z-index: 1;
+        }
+
+        .slider-highlight {
+            position: absolute;
+            height: 4px;
+            border-radius: 3px;
+            background-color: var(--signal);
+            z-index: 1;
+        }
+
+        /* ============ BOTÓN ============ */
+        .btn-search {
+            background-color: var(--ink);
+            color: var(--paper);
+            border: none;
+            padding: 13px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+            font-size: 0.92em;
+            letter-spacing: 0.01em;
+        }
+
+        .btn-search:hover { background-color: var(--signal); }
+        .btn-search:active { transform: translateY(1px); }
+
+        /* ============ RESUMEN DE RESULTADOS ============ */
+        .results-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            padding: 0 2px;
+        }
+
+        .results-count {
+            font-size: 0.95em;
+            color: var(--steel);
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        .results-badge {
+            background-color: var(--ink);
+            color: var(--paper);
+            padding: 3px 11px;
+            border-radius: 100px;
+            font-size: 0.9em;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* ============ TABLA ============ */
+        .table-wrap {
+            background: var(--panel);
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(18, 24, 31, 0.04);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 760px;
+            border-collapse: collapse;
+            background: var(--panel);
+        }
+
+        th, td { padding: 14px 18px; text-align: left; }
+
+        th {
+            background-color: var(--paper);
+            color: var(--steel);
+            font-family: var(--font-mono);
+            font-size: 0.72em;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--line);
+            white-space: nowrap;
+        }
+
+        tbody tr { border-bottom: 1px solid var(--line); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background-color: var(--paper); }
+
+        td {
+            font-size: 0.93em;
+            color: var(--ink);
+        }
+
+        /* Precios y año en mono con cifras tabulares, como un cuentakilómetros */
+        td:nth-child(5), td:nth-child(6), td:nth-child(7) {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            font-size: 0.88em;
+        }
+
+        .badge {
+            background: var(--signal-soft);
+            color: var(--signal);
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.8em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .car-link {
+            color: var(--ink);
+            font-weight: 600;
+            text-decoration: none;
+            border-bottom: 1px solid var(--line);
+            transition: border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .car-link:hover { color: var(--signal); border-color: var(--signal); }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 640px) {
+            body { padding: 28px 16px 56px; }
+            h1 { font-size: 1.55em; }
+            .filter-card { padding: 20px 18px; }
+            th, td { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-bar">
+        <p class="eyebrow">Buscador multi-fuente · 5 portales en vivo</p>
+        <h1>Buscador de Vehículos (KM0 / Segunda Mano)</h1>
+        <p class="header-sub">Filtra por marca, año y precio y encuentra al instante lo que ofrecen los principales portales de coches de segunda mano y KM0 en España.</p>
+        <div class="source-legend">
+            <span class="source-chip"><span class="source-dot c1"></span>Flexicar</span>
+            <span class="source-chip"><span class="source-dot c2"></span>Autokolecció</span>
+            <span class="source-chip"><span class="source-dot c3"></span>Coches.net</span>
+            <span class="source-chip"><span class="source-dot c4"></span>Cochesinternet.net</span>
+            <span class="source-chip"><span class="source-dot c5"></span>Coches.com</span>
+        </div>
+    </div>
+
+    <div class="filter-card">
+        <div class="grid-filters">
+            <!-- Desplegable Marcas Extendido -->
+            <div class="form-group">
+                <label for="marcaSelect">Marca:</label>
+                <select id="marcaSelect">
+                    <option value="audi">Audi</option>
+                    <option value="bmw">BMW</option>
+                    <option value="cupra">Cupra</option>
+                    <option value="fiat">Fiat</option>
+                    <option value="ford">Ford</option>
+                    <option value="hyundai">Hyundai</option>
+                    <option value="kia">Kia</option>
+                    <option value="mercedes-benz">Mercedes-Benz</option>
+                    <option value="nissan">Nissan</option>
+                    <option value="peugeot">Peugeot</option>
+                    <option value="renault">Renault</option>
+                    <option value="seat">SEAT</option>
+                    <option value="toyota">Toyota</option>
+                    <option value="volkswagen">Volkswagen</option>
+                    <option value="volvo">Volvo</option>
+                </select>
+            </div>
+
+            <!-- Categoría -->
+            <div class="form-group">
+                <label for="categoriaSelect">Categoría:</label>
+                <select id="categoriaSelect">
+                    <option value="todas">Todas</option>
+                    <option value="coches-km0">KM0</option>
+                    <option value="segunda-mano">Ocasión</option>
+                </select>
+            </div>
+
+            <!-- Proveedor B2C -->
+            <div class="form-group">
+                <label for="proveedorSelect">Proveedor B2C:</label>
+                <select id="proveedorSelect">
+                    <option value="todos">Todos (5 Fuentes)</option>
+                    <option value="autokoleccio">Autokolecció</option>
+                    <option value="flexicar">Flexicar</option>
+                    <option value="cochesnet">Coches.net</option>
+                    <option value="cochesinternet">Cochesinternet.net</option>
+                    <option value="cochescom">Coches.com</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid-filters">
+            <!-- Double Slider de Año (2021-2026 por defecto) -->
+            <div class="form-group">
+                <label>
+                    <span>Rango de Año:</span>
+                    <span id="anioValores">2021 - 2026</span>
+                </label>
+                <div class="range-slider-container">
+                    <div class="slider-track"></div>
+                    <div class="slider-highlight" id="anioHighlight"></div>
+                    <input type="range" id="anioMin" min="2010" max="2026" value="2021" oninput="updateAnioSlider()">
+                    <input type="range" id="anioMax" min="2010" max="2026" value="2026" oninput="updateAnioSlider()">
+                </div>
+            </div>
+
+            <!-- Double Slider de Precio (0-100.000 € por defecto) -->
+            <div class="form-group">
+                <label>
+                    <span>Rango de Precio (€):</span>
+                    <span id="precioValores">0 € - 100.000 €</span>
+                </label>
+                <div class="range-slider-container">
+                    <div class="slider-track"></div>
+                    <div class="slider-highlight" id="precioHighlight"></div>
+                    <input type="range" id="precioMin" min="0" max="150000" step="1000" value="0" oninput="updatePrecioSlider()">
+                    <input type="range" id="precioMax" min="0" max="150000" step="1000" value="100000" oninput="updatePrecioSlider()">
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: right;">
+            <button class="btn-search" onclick="buscarCoches()">Filtrar y Buscar</button>
+        </div>
+    </div>
+
+    <!-- Contador dinámico de resultados -->
+    <div class="results-summary">
+        <div class="results-count">
+            Vehículos encontrados: <span class="results-badge" id="numCoches">0</span>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Proveedor</th>
+                    <th>Categoría</th>
+                    <th>Marca</th>
+                    <th>Modelo (Enlace)</th>
+                    <th>Año</th>
+                    <th>Precio Contado</th>
+                    <th>Precio Financiado</th>
+                </tr>
+            </thead>
+            <tbody id="tablaResultados">
+                <tr>
+                    <td colspan="7" style="text-align:center; color: #8A94A0; padding: 32px 18px;">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Ajuste interactivo de los sliders de Rango de Año
+function updateAnioSlider() {
+    let minInput = document.getElementById('anioMin');
+    let maxInput = document.getElementById('anioMax');
+    let minVal = parseInt(minInput.value);
+    let maxVal = parseInt(maxInput.value);
+
+    if (minVal > maxVal) {
+        let tmp = minVal;
+        minInput.value = maxVal;
+        maxInput.value = tmp;
+        minVal = maxVal;
+        maxVal = tmp;
+    }
+
+    document.getElementById('anioValores').textContent = `${minVal} - ${maxVal}`;
+    
+    let percentMin = ((minVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    let percentMax = ((maxVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    
+    let highlight = document.getElementById('anioHighlight');
+    highlight.style.left = percentMin + '%';
+    highlight.style.width = (percentMax - percentMin) + '%';
+}
+
+// Ajuste interactivo de los sliders de Rango de Precio
+function updatePrecioSlider() {
+    let minInput = document.getElementById('precioMin');
+    let maxInput = document.getElementById('precioMax');
+    let minVal = parseInt(minInput.value);
+    let maxVal = parseInt(maxInput.value);
+
+    if (minVal > maxVal) {
+        let tmp = minVal;
+        minInput.value = maxVal;
+        maxInput.value = tmp;
+        minVal = maxVal;
+        maxVal = tmp;
+    }
+
+    let minFmt = minVal.toLocaleString('es-ES') + ' €';
+    let maxFmt = maxVal.toLocaleString('es-ES') + ' €';
+    document.getElementById('precioValores').textContent = `${minFmt} - ${maxFmt}`;
+
+    let percentMin = ((minVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    let percentMax = ((maxVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+
+    let highlight = document.getElementById('precioHighlight');
+    highlight.style.left = percentMin + '%';
+    highlight.style.width = (percentMax - percentMin) + '%';
+}
+
+// Inicializar posiciones de los sliders al cargar
+window.onload = function() {
+    updateAnioSlider();
+    updatePrecioSlider();
+};
+
+async function buscarCoches() {
+    const tabla = document.getElementById('tablaResultados');
+    const badgeCount = document.getElementById('numCoches');
+
+    tabla.innerHTML = `<tr><td colspan="7" style="text-align:center;">Cargando vehículos desde las fuentes seleccionadas...</td></tr>`;
+    badgeCount.textContent = "...";
+
+    const payload = {
+        marca: document.getElementById('marcaSelect').value,
+        categoria: document.getElementById('categoriaSelect').value,
+        proveedor: document.getElementById('proveedorSelect').value,
+        anioMin: document.getElementById('anioMin').value,
+        anioMax: document.getElementById('anioMax').value,
+        precioMin: document.getElementById('precioMin').value,
+        precioMax: document.getElementById('precioMax').value
+    };
+
+    try {
+        const response = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const resData = await response.json();
+        const total = resData.data ? resData.data.length : 0;
+        
+        badgeCount.textContent = total;
+
+        if (total === 0) {
+            tabla.innerHTML = `<tr><td colspan="7" style="text-align:center;">No se encontraron vehículos para los filtros aplicados.</td></tr>`;
+            return;
+        }
+
+        tabla.innerHTML = resData.data.map(item => `
+            <tr>
+                <td><strong>${item.proveedor}</strong></td>
+                <td><span class="badge">${item.categoria}</span></td>
+                <td>${item.marca}</td>
+                <td>
+                    <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="car-link">
+                        ${item.modelo} ↗
+                    </a>
+                </td>
+                <td>${item.anio}</td>
+                <td><strong>${item.contado}</strong></td>
+                <td><strong>${item.financiado}</strong></td>
+            </tr>
+        `).join('');
+
+    } catch (err) {
+        badgeCount.textContent = "0";
+        tabla.innerHTML = `<tr><td colspan="7" style="text-align:center; color: red;">Error conectando con el servidor.</td></tr>`;
+    }
+}
+</script>
+
+</body>
+</html>
