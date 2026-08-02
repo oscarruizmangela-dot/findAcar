@@ -42,6 +42,20 @@ def limpiar_numero(cadena):
     num = re.sub(r'[^\d]', '', str(cadena))
     return int(num) if num else None
 
+def extraer_potencia(texto):
+    """Busca la potencia (CV o kW) en un texto ya descargado (ficha/tarjeta o slug de URL).
+    No hace peticiones nuevas: reutiliza el mismo texto que ya se usa para precio/año.
+    Devuelve un string tipo '150 CV' o 'N/D' si no se encuentra ningún patrón reconocido."""
+    if not texto:
+        return "N/D"
+    match_cv = re.search(r'(\d{2,3})\s?-?\s?cv\b', texto, re.IGNORECASE)
+    if match_cv:
+        return f"{match_cv.group(1)} CV"
+    match_kw = re.search(r'(\d{2,3})\s?-?\s?kw\b', texto, re.IGNORECASE)
+    if match_kw:
+        return f"{match_kw.group(1)} kW"
+    return "N/D"
+
 def es_modelo_legitimo(marca, slug_o_texto):
     marca_clean = marca.lower().strip()
     modelos = MODELOS_VALIDOS.get(marca_clean, [])
@@ -126,6 +140,7 @@ def scrape_autokoleccio(marca="audi", tipo="todas", max_pages=2):
                         anio_val = anios[0]
 
                     url_coche = link if link.startswith('http') else f"https://www.autokoleccio.com{link}"
+                    potencia = extraer_potencia(text_content)
 
                     resultados.append({
                         "proveedor": "Autokolecció",
@@ -135,6 +150,7 @@ def scrape_autokoleccio(marca="audi", tipo="todas", max_pages=2):
                         "anio": str(anio_val),
                         "contado": contado,
                         "financiado": financiado,
+                        "potencia": potencia,
                         "url": url_coche
                     })
 
@@ -259,6 +275,7 @@ async def scrape_flexicar_async(marca="audi", tipo="todas", max_scrolls=4):
             titulo_raw = re.sub(r'\b(\d)\s(\d)\b', r'\1.\2', titulo_raw)
 
             url_coche = href if href.startswith('http') else f"https://www.flexicar.es{href}"
+            potencia = extraer_potencia(slug + " " + text)
 
             resultados.append({
                 "proveedor": "Flexicar",
@@ -268,6 +285,7 @@ async def scrape_flexicar_async(marca="audi", tipo="todas", max_scrolls=4):
                 "anio": str(anio_val),
                 "contado": f"{precio_contado:,}".replace(",", ".") + " €",
                 "financiado": f"{precio_oferta:,}".replace(",", ".") + " €",
+                "potencia": potencia,
                 "url": url_coche
             })
 
@@ -351,6 +369,8 @@ async def scrape_cochesnet_async(marca="audi"):
                 if anio_match:
                     anio_str = anio_match.group(1)
 
+                potencia = extraer_potencia(text)
+
                 resultados.append({
                     "proveedor": "Coches.net",
                     "categoria": "Ocasión",
@@ -359,6 +379,7 @@ async def scrape_cochesnet_async(marca="audi"):
                     "anio": str(anio_str),
                     "contado": precio_str,
                     "financiado": precio_str,
+                    "potencia": potencia,
                     "url": url_coche
                 })
 
@@ -466,6 +487,7 @@ def scrape_cochesinternet(marca="audi", tipo="todas"):
                     anio_val = anio_match.group(1)
 
                 url_coche = link if link.startswith('http') else f"https://www.cochesinternet.net{link}"
+                potencia = extraer_potencia(text_content)
 
                 resultados.append({
                     "proveedor": "Cochesinternet.net",
@@ -475,6 +497,7 @@ def scrape_cochesinternet(marca="audi", tipo="todas"):
                     "anio": str(anio_val),
                     "contado": contado,
                     "financiado": financiado,
+                    "potencia": potencia,
                     "url": url_coche
                 })
 
@@ -560,6 +583,7 @@ def scrape_cochescom(marca="audi", tipo="todas"):
                 titulo = re.sub(r'\b(\d)\s(\d)\b', r'\1.\2', raw_name)
 
                 url_coche = href if href.startswith('http') else f"https://www.coches.com{href}"
+                potencia = extraer_potencia(text)
 
                 resultados.append({
                     "proveedor": "Coches.com",
@@ -569,6 +593,7 @@ def scrape_cochescom(marca="audi", tipo="todas"):
                     "anio": str(anio_val),
                     "contado": f"{contado_val:,}".replace(",", ".") + " €",
                     "financiado": f"{financiado_val:,}".replace(",", ".") + " €",
+                    "potencia": potencia,
                     "url": url_coche
                 })
 
@@ -662,6 +687,7 @@ def scrape_ocasionplus(marca="audi", tipo="todas"):
                     titulo = re.sub(r'\b(\d)\s(\d)\b', r'\1.\2', slug_raw.replace('-', ' ').title())
 
                     url_coche = href if href.startswith('http') else f"https://www.ocasionplus.com{href}"
+                    potencia = extraer_potencia(text_limpio)
 
                     resultados.append({
                         "proveedor": "OcasionPlus",
@@ -671,6 +697,7 @@ def scrape_ocasionplus(marca="audi", tipo="todas"):
                         "anio": str(anio_val),
                         "contado": f"{contado_val:,}".replace(",", ".") + " €",
                         "financiado": f"{financiado_val:,}".replace(",", ".") + " €",
+                        "potencia": potencia,
                         "url": url_coche
                     })
 
@@ -734,6 +761,7 @@ def scrape():
 
     resultados_filtrados = []
     for item in todos_los_resultados:
+        item.setdefault("potencia", "N/D")
         p_val = limpiar_numero(item.get("contado"))
         if p_val:
             if precio_min and p_val < int(precio_min):

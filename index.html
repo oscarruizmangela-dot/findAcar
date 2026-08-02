@@ -473,13 +473,14 @@
                     <th>Marca</th>
                     <th>Modelo (Enlace)</th>
                     <th>Año</th>
+                    <th>Potencia</th>
                     <th>Precio Contado</th>
                     <th>Precio Financiado</th>
                 </tr>
             </thead>
             <tbody id="tablaResultados">
                 <tr>
-                    <td colspan="7" style="text-align:center; color: #8A94A0; padding: 32px 18px;">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
+                    <td colspan="8" style="text-align:center; color: #8A94A0; padding: 32px 18px;">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
                 </tr>
             </tbody>
         </table>
@@ -549,7 +550,7 @@ async function buscarCoches() {
     const tabla = document.getElementById('tablaResultados');
     const badgeCount = document.getElementById('numCoches');
 
-    tabla.innerHTML = `<tr><td colspan="7" style="text-align:center;">Cargando vehículos desde las fuentes seleccionadas...</td></tr>`;
+    tabla.innerHTML = `<tr><td colspan="8" style="text-align:center;">Cargando vehículos desde las fuentes seleccionadas...</td></tr>`;
     badgeCount.textContent = "...";
 
     const payload = {
@@ -575,7 +576,7 @@ async function buscarCoches() {
         badgeCount.textContent = total;
 
         if (total === 0) {
-            tabla.innerHTML = `<tr><td colspan="7" style="text-align:center;">No se encontraron vehículos para los filtros aplicados.</td></tr>`;
+            tabla.innerHTML = `<tr><td colspan="8" style="text-align:center;">No se encontraron vehículos para los filtros aplicados.</td></tr>`;
             return;
         }
 
@@ -590,6 +591,7 @@ async function buscarCoches() {
                     </a>
                 </td>
                 <td>${item.anio}</td>
+                <td>${item.potencia || 'N/D'}</td>
                 <td><strong>${item.contado}</strong></td>
                 <td><strong>${item.financiado}</strong></td>
             </tr>
@@ -597,7 +599,7 @@ async function buscarCoches() {
 
     } catch (err) {
         badgeCount.textContent = "0";
-        tabla.innerHTML = `<tr><td colspan="7" style="text-align:center; color: red;">Error conectando con el servidor.</td></tr>`;
+        tabla.innerHTML = `<tr><td colspan="8" style="text-align:center; color: red;">Error conectando con el servidor.</td></tr>`;
     }
 }
 </script>
