@@ -1,11 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
+<html lang="es"><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscador de Vehículos Multi-Fuente</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com/">
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -35,7 +33,7 @@
             line-height: 1.5;
         }
 
-        .container { max-width: 1240px; margin: 0 auto; }
+        .container { max-width: 1480px; margin: 0 auto; }
 
         /* ============ CABECERA ============ */
         .header-bar { margin-bottom: 36px; }
@@ -405,20 +403,21 @@
 
         table {
             width: 100%;
-            min-width: 760px;
+            min-width: 1080px;
             border-collapse: collapse;
             background: var(--panel);
+            table-layout: auto;
         }
 
-        th, td { padding: 14px 18px; text-align: left; }
+        th, td { padding: 9px 10px; text-align: left; }
 
         th {
             background-color: var(--paper);
             color: var(--steel);
             font-family: var(--font-mono);
-            font-size: 0.72em;
+            font-size: 0.64em;
             font-weight: 600;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
             border-bottom: 1px solid var(--line);
             white-space: nowrap;
@@ -429,8 +428,16 @@
         tbody tr:hover { background-color: var(--paper); }
 
         td {
-            font-size: 0.93em;
+            font-size: 0.85em;
             color: var(--ink);
+        }
+
+        /* La columna Modelo es la más variable en longitud: se acota y
+           envuelve en vez de forzar el resto de columnas fuera de vista */
+        td:nth-child(4) {
+            max-width: 240px;
+            white-space: normal;
+            word-break: break-word;
         }
 
         /* Precios y año en mono con cifras tabulares, como un cuentakilómetros */
@@ -475,6 +482,33 @@
         .score-baja { background: #F6DCDA; color: #B0223D; }
         .score-nd { background: var(--paper); color: var(--steel-soft); border: 1px solid var(--line); }
 
+        /* ============ LOADER ============ */
+        .loader-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 44px 18px;
+            color: var(--steel);
+            font-size: 0.95em;
+        }
+
+        .loader-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid var(--line);
+            border-top-color: var(--signal);
+            border-radius: 50%;
+            flex-shrink: 0;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            .loader-spinner { animation: none; border-top-color: var(--steel-soft); }
+        }
+
         /* ============ TOGGLE DE FILTROS ============ */
         .filters-toggle-row {
             display: flex;
@@ -518,8 +552,8 @@
         <div class="header-top">
             <p class="eyebrow" data-i18n="eyebrow">Buscador multi-fuente · 9 portales en vivo</p>
             <div class="lang-switch">
-                <button type="button" class="lang-btn" data-lang="es" onclick="cambiarIdioma('es')">ES</button>
-                <button type="button" class="lang-btn" data-lang="ca" onclick="cambiarIdioma('ca')">CA</button>
+                <button type="button" class="lang-btn active" data-lang="es" onclick="cambiarIdioma(&#39;es&#39;)">ES</button>
+                <button type="button" class="lang-btn" data-lang="ca" onclick="cambiarIdioma(&#39;ca&#39;)">CA</button>
             </div>
         </div>
         <h1 data-i18n="h1">Buscador de Vehículos (KM0 / Segunda Mano)</h1>
@@ -572,9 +606,9 @@
             <div class="form-group">
                 <label data-i18n="labelCategoria">Categoría:</label>
                 <div class="segmented-control" id="categoriaControl" role="group">
-                    <button type="button" class="segment-btn active" data-valor="todas" data-i18n="catTodas" onclick="seleccionarCategoria('todas', this)">Todas</button>
-                    <button type="button" class="segment-btn" data-valor="coches-km0" onclick="seleccionarCategoria('coches-km0', this)">KM0</button>
-                    <button type="button" class="segment-btn" data-valor="segunda-mano" data-i18n="catOcasion" onclick="seleccionarCategoria('segunda-mano', this)">Ocasión</button>
+                    <button type="button" class="segment-btn active" data-valor="todas" data-i18n="catTodas" onclick="seleccionarCategoria(&#39;todas&#39;, this)">Todas</button>
+                    <button type="button" class="segment-btn" data-valor="coches-km0" onclick="seleccionarCategoria(&#39;coches-km0&#39;, this)">KM0</button>
+                    <button type="button" class="segment-btn" data-valor="segunda-mano" data-i18n="catOcasion" onclick="seleccionarCategoria(&#39;segunda-mano&#39;, this)">Ocasión</button>
                 </div>
             </div>
 
@@ -599,9 +633,9 @@
             <div class="form-group">
                 <label data-i18n="labelCambio">Cambio:</label>
                 <div class="segmented-control" id="cambioControl" role="group">
-                    <button type="button" class="segment-btn active" data-valor="todos" data-i18n="cambioTodos" onclick="seleccionarCambio('todos', this)">Todos</button>
-                    <button type="button" class="segment-btn" data-valor="manual" data-i18n="cambioManual" onclick="seleccionarCambio('manual', this)">Manual</button>
-                    <button type="button" class="segment-btn" data-valor="automatico" data-i18n="cambioAutomatico" onclick="seleccionarCambio('automatico', this)">Automático</button>
+                    <button type="button" class="segment-btn active" data-valor="todos" data-i18n="cambioTodos" onclick="seleccionarCambio(&#39;todos&#39;, this)">Todos</button>
+                    <button type="button" class="segment-btn" data-valor="manual" data-i18n="cambioManual" onclick="seleccionarCambio(&#39;manual&#39;, this)">Manual</button>
+                    <button type="button" class="segment-btn" data-valor="automatico" data-i18n="cambioAutomatico" onclick="seleccionarCambio(&#39;automatico&#39;, this)">Automático</button>
                 </div>
             </div>
 
@@ -609,12 +643,12 @@
             <div class="form-group full-width">
                 <label data-i18n="labelCombustible">Tecnología:</label>
                 <div class="segmented-control" id="combustibleControl" role="group">
-                    <button type="button" class="segment-btn active" data-valor="todas" data-i18n="combTodas" onclick="seleccionarCombustible('todas', this)">Todas</button>
-                    <button type="button" class="segment-btn" data-valor="diesel" data-i18n="combDiesel" onclick="seleccionarCombustible('diesel', this)">Diésel</button>
-                    <button type="button" class="segment-btn" data-valor="gasolina" data-i18n="combGasolina" onclick="seleccionarCombustible('gasolina', this)">Gasolina</button>
-                    <button type="button" class="segment-btn" data-valor="electrico" data-i18n="combElectrico" onclick="seleccionarCombustible('electrico', this)">Eléctrico</button>
-                    <button type="button" class="segment-btn" data-valor="hibrido-enchufable" data-i18n="combHibridoEnchufable" onclick="seleccionarCombustible('hibrido-enchufable', this)">Híbrido enchufable</button>
-                    <button type="button" class="segment-btn" data-valor="hibrido-no-enchufable" data-i18n="combHibridoNoEnchufable" onclick="seleccionarCombustible('hibrido-no-enchufable', this)">Híbrido no enchufable</button>
+                    <button type="button" class="segment-btn active" data-valor="todas" data-i18n="combTodas" onclick="seleccionarCombustible(&#39;todas&#39;, this)">Todas</button>
+                    <button type="button" class="segment-btn" data-valor="diesel" data-i18n="combDiesel" onclick="seleccionarCombustible(&#39;diesel&#39;, this)">Diésel</button>
+                    <button type="button" class="segment-btn" data-valor="gasolina" data-i18n="combGasolina" onclick="seleccionarCombustible(&#39;gasolina&#39;, this)">Gasolina</button>
+                    <button type="button" class="segment-btn" data-valor="electrico" data-i18n="combElectrico" onclick="seleccionarCombustible(&#39;electrico&#39;, this)">Eléctrico</button>
+                    <button type="button" class="segment-btn" data-valor="hibrido-enchufable" data-i18n="combHibridoEnchufable" onclick="seleccionarCombustible(&#39;hibrido-enchufable&#39;, this)">Híbrido enchufable</button>
+                    <button type="button" class="segment-btn" data-valor="hibrido-no-enchufable" data-i18n="combHibridoNoEnchufable" onclick="seleccionarCombustible(&#39;hibrido-no-enchufable&#39;, this)">Híbrido no enchufable</button>
                 </div>
             </div>
         </div>
@@ -628,7 +662,7 @@
                 </label>
                 <div class="range-slider-container">
                     <div class="slider-track"></div>
-                    <div class="slider-highlight" id="anioHighlight"></div>
+                    <div class="slider-highlight" id="anioHighlight" style="left: 68.75%; width: 31.25%;"></div>
                     <input type="range" id="anioMin" min="2010" max="2026" value="2021" oninput="updateAnioSlider()">
                     <input type="range" id="anioMax" min="2010" max="2026" value="2026" oninput="updateAnioSlider()">
                 </div>
@@ -642,7 +676,7 @@
                 </label>
                 <div class="range-slider-container">
                     <div class="slider-track"></div>
-                    <div class="slider-highlight" id="precioHighlight"></div>
+                    <div class="slider-highlight" id="precioHighlight" style="left: 0%; width: 66.6667%;"></div>
                     <input type="range" id="precioMin" min="0" max="150000" step="1000" value="0" oninput="updatePrecioSlider()">
                     <input type="range" id="precioMax" min="0" max="150000" step="1000" value="100000" oninput="updatePrecioSlider()">
                 </div>
@@ -656,7 +690,7 @@
                 </label>
                 <div class="range-slider-container">
                     <div class="slider-track"></div>
-                    <div class="slider-highlight" id="potenciaHighlight"></div>
+                    <div class="slider-highlight" id="potenciaHighlight" style="left: 0%; width: 100%;"></div>
                     <input type="range" id="potenciaMin" min="0" max="500" step="10" value="0" oninput="updatePotenciaSlider()">
                     <input type="range" id="potenciaMax" min="0" max="500" step="10" value="500" oninput="updatePotenciaSlider()">
                 </div>
@@ -666,11 +700,11 @@
             <div class="form-group">
                 <label>
                     <span data-i18n="labelRangoKm">Rango de Kilómetros:</span>
-                    <span id="kmValores">0 - 200.000 km</span>
+                    <span id="kmValores">0 km - 200.000 km</span>
                 </label>
                 <div class="range-slider-container">
                     <div class="slider-track"></div>
-                    <div class="slider-highlight" id="kmHighlight"></div>
+                    <div class="slider-highlight" id="kmHighlight" style="left: 0%; width: 100%;"></div>
                     <input type="range" id="kmMin" min="0" max="200000" step="5000" value="0" oninput="updateKmSlider()">
                     <input type="range" id="kmMax" min="0" max="200000" step="5000" value="200000" oninput="updateKmSlider()">
                 </div>
@@ -685,13 +719,13 @@
     <!-- Contador dinámico de resultados -->
     <div class="results-summary">
         <div class="results-count">
-            <span data-i18n="labelEncontrados">Vehículos encontrados:</span> <span class="results-badge" id="numCoches">0</span>
+            <span data-i18n="labelEncontrados">Vehículos encontrados:</span> <span class="results-badge" id="numCoches">15</span>
         </div>
-        <button class="btn-export" id="btnExportar" onclick="exportarExcel()" data-i18n="btnExportar" disabled>⬇ Exportar a Excel</button>
+        <button class="btn-export" id="btnExportar" onclick="exportarExcel()" data-i18n="btnExportar">⬇ Exportar a Excel</button>
     </div>
 
     <!-- Avisos si algún proveedor ha vuelto sin resultados mientras otros sí -->
-    <div class="provider-warnings" id="avisosProveedor"></div>
+    <div class="provider-warnings" id="avisosProveedor" style="display: none;"></div>
 
     <div class="table-wrap">
         <table>
@@ -700,22 +734,303 @@
                     <th data-i18n="thProveedor">Proveedor</th>
                     <th data-i18n="thCategoria">Categoría</th>
                     <th data-i18n="thMarca">Marca</th>
-                    <th data-i18n="thModelo">Modelo (Enlace)</th>
+                    <th data-i18n="thModelo">Modelo</th>
                     <th data-i18n="thAnio">Año</th>
-                    <th data-i18n="thKm">Kilómetros</th>
+                    <th data-i18n="thKm">Km</th>
                     <th data-i18n="thPotencia">Potencia</th>
                     <th data-i18n="thCombustible">Combustible</th>
                     <th data-i18n="thCambio">Cambio</th>
-                    <th data-i18n="thContado">Precio Contado</th>
-                    <th data-i18n="thFinanciado">Precio Financiado</th>
+                    <th data-i18n="thContado">Contado</th>
+                    <th data-i18n="thFinanciado">Financiado</th>
                     <th data-i18n="thPuntuacion">Puntuación</th>
                 </tr>
             </thead>
             <tbody id="tablaResultados">
-                <tr>
-                    <td colspan="12" style="text-align:center; color: #8A94A0; padding: 32px 18px;" data-i18n="msgInicial">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
-                </tr>
-            </tbody>
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-b-b-180-d-diesel-automatica-alicante_903000000275116/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase B B 180 D Diesel Automatica Alicante ↗
+                    </a>
+                </td>
+                <td>2022</td>
+                <td>33.295 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>24.490 €</strong></td>
+                <td><strong>21.490 €</strong></td>
+                <td><span class="score-badge score-alta">81 🏆</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-a-a-200-d-diesel-automatica-cordoba-2_903000000224582/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase A A 200 D Diesel Automatica Cordoba 2 ↗
+                    </a>
+                </td>
+                <td>2023</td>
+                <td>97.152 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>27.290 €</strong></td>
+                <td><strong>24.290 €</strong></td>
+                <td><span class="score-badge score-media">74</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-cla-cla-200-gasolina-automatica-toledo-3_903000000275638/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase Cla Cla 200 Gasolina Automatica Toledo 3 ↗
+                    </a>
+                </td>
+                <td>2022</td>
+                <td>25.500 km</td>
+                <td>N/D</td>
+                <td>Gasolina</td>
+                <td>N/D</td>
+                <td><strong>32.990 €</strong></td>
+                <td><strong>29.690 €</strong></td>
+                <td><span class="score-badge score-media">72</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-a-a-200-d-diesel-automatica-sitges_903000000264477/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase A A 200 D Diesel Automatica Sitges ↗
+                    </a>
+                </td>
+                <td>2023</td>
+                <td>79.000 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>33.690 €</strong></td>
+                <td><strong>29.390 €</strong></td>
+                <td><span class="score-badge score-media">71</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-gla-gla-200-d-diesel-automatica-don-benito-villanueva_903000000266210/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase Gla Gla 200 D Diesel Automatica Don Benito Villanueva ↗
+                    </a>
+                </td>
+                <td>2022</td>
+                <td>50.031 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>33.690 €</strong></td>
+                <td><strong>30.490 €</strong></td>
+                <td><span class="score-badge score-media">64</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-a-a-200-d-diesel-automatica-alcorcon-grande_903000000250442/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase A A 200 D Diesel Automatica Alcorcon Grande ↗
+                    </a>
+                </td>
+                <td>2022</td>
+                <td>77.660 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>27.990 €</strong></td>
+                <td><strong>25.390 €</strong></td>
+                <td><span class="score-badge score-media">63</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-a-a-200-gasolina-automatica-oviedo_903000000272571/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase A A 200 Gasolina Automatica Oviedo ↗
+                    </a>
+                </td>
+                <td>2022</td>
+                <td>76.791 km</td>
+                <td>N/D</td>
+                <td>Gasolina</td>
+                <td>N/D</td>
+                <td><strong>30.490 €</strong></td>
+                <td><strong>27.490 €</strong></td>
+                <td><span class="score-badge score-media">60</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-a-a-180-d-diesel-automatica-sevilla-4_903000000264366/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase A A 180 D Diesel Automatica Sevilla 4 ↗
+                    </a>
+                </td>
+                <td>2021</td>
+                <td>77.890 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>24.490 €</strong></td>
+                <td><strong>21.490 €</strong></td>
+                <td><span class="score-badge score-media">50</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-glb-20-glb-250-4matic-dct-165kw-224cv-gasolina-automatica-don-benito-villanueva_903000000247988/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase Glb 20 Glb 250 4Matic Dct 165Kw 224Cv Gasolina Automatica Don Benito Villanueva ↗
+                    </a>
+                </td>
+                <td>2021</td>
+                <td>76.893 km</td>
+                <td>224 CV</td>
+                <td>Gasolina</td>
+                <td>Automático</td>
+                <td><strong>37.590 €</strong></td>
+                <td><strong>33.590 €</strong></td>
+                <td><span class="score-badge score-media">50</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-glc-glc-200-d-4matic-diesel-automatica-cordoba_903000000219593/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase Glc Glc 200 D 4Matic Diesel Automatica Cordoba ↗
+                    </a>
+                </td>
+                <td>2022</td>
+                <td>95.001 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>34.490 €</strong></td>
+                <td><strong>30.090 €</strong></td>
+                <td><span class="score-badge score-baja">49</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-cla-cla-200-d-dct-shooting-brake-diesel-automatica-villalba-2_903000000247875/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase Cla Cla 200 D Dct Shooting Brake Diesel Automatica Villalba 2 ↗
+                    </a>
+                </td>
+                <td>2021</td>
+                <td>89.700 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>Automático</td>
+                <td><strong>26.390 €</strong></td>
+                <td><strong>24.290 €</strong></td>
+                <td><span class="score-badge score-baja">44</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-glc-glc-200-d-4matic-diesel-automatica-alcorcon-grande_903000000247844/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase Glc Glc 200 D 4Matic Diesel Automatica Alcorcon Grande ↗
+                    </a>
+                </td>
+                <td>2022</td>
+                <td>126.600 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>35.390 €</strong></td>
+                <td><strong>31.790 €</strong></td>
+                <td><span class="score-badge score-baja">38</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-cla-cla-200-d-4matic-dct-diesel-automatica-colmenar-viejo_903000000247871/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase Cla Cla 200 D 4Matic Dct Diesel Automatica Colmenar Viejo ↗
+                    </a>
+                </td>
+                <td>2021</td>
+                <td>133.346 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>Automático</td>
+                <td><strong>28.990 €</strong></td>
+                <td><strong>25.490 €</strong></td>
+                <td><span class="score-badge score-baja">27</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-glc-coupe-glc-220-d-4matic-diesel-automatica-sevilla-4_903000000273639/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase Glc Coupe Glc 220 D 4Matic Diesel Automatica Sevilla 4 ↗
+                    </a>
+                </td>
+                <td>2021</td>
+                <td>81.805 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>44.490 €</strong></td>
+                <td><strong>39.490 €</strong></td>
+                <td><span class="score-badge score-baja">23</span></td>
+            </tr>
+        
+            <tr>
+                <td><strong>Flexicar</strong></td>
+                <td><span class="badge">Ocasión</span></td>
+                <td>Mercedes-benz</td>
+                <td>
+                    <a href="https://www.flexicar.es/coches-ocasion/mercedes-benz-clase-e-e-400-d-4matic-diesel-automatica-tolosa_903000000277000/" target="_blank" rel="noopener noreferrer" class="car-link">
+                        Mercedes Benz Clase E E 400 D 4Matic Diesel Automatica Tolosa ↗
+                    </a>
+                </td>
+                <td>2021</td>
+                <td>104.000 km</td>
+                <td>N/D</td>
+                <td>Diésel</td>
+                <td>N/D</td>
+                <td><strong>49.990 €</strong></td>
+                <td><strong>44.990 €</strong></td>
+                <td><span class="score-badge score-baja">9</span></td>
+            </tr>
+        </tbody>
         </table>
     </div>
 </div>
@@ -762,14 +1077,14 @@ const I18N = {
         thProveedor: "Proveedor",
         thCategoria: "Categoría",
         thMarca: "Marca",
-        thModelo: "Modelo (Enlace)",
+        thModelo: "Modelo",
         thAnio: "Año",
-        thKm: "Kilómetros",
+        thKm: "Km",
         thPotencia: "Potencia",
         thCombustible: "Combustible",
         thCambio: "Cambio",
-        thContado: "Precio Contado",
-        thFinanciado: "Precio Financiado",
+        thContado: "Contado",
+        thFinanciado: "Financiado",
         thPuntuacion: "Puntuación",
         msgInicial: 'Haz clic en "Filtrar y Buscar" para obtener resultados',
         msgCargando: "Cargando vehículos desde las fuentes seleccionadas...",
@@ -811,14 +1126,14 @@ const I18N = {
         thProveedor: "Proveïdor",
         thCategoria: "Categoria",
         thMarca: "Marca",
-        thModelo: "Model (Enllaç)",
+        thModelo: "Model",
         thAnio: "Any",
-        thKm: "Quilòmetres",
+        thKm: "Km",
         thPotencia: "Potència",
         thCombustible: "Combustible",
         thCambio: "Canvi",
-        thContado: "Preu Comptat",
-        thFinanciado: "Preu Finançat",
+        thContado: "Comptat",
+        thFinanciado: "Finançat",
         thPuntuacion: "Puntuació",
         msgInicial: 'Fes clic a "Filtra i Cerca" per obtenir resultats',
         msgCargando: "Carregant vehicles des de les fonts seleccionades...",
@@ -1023,7 +1338,7 @@ async function buscarCoches() {
     const badgeCount = document.getElementById('numCoches');
     const btnExportar = document.getElementById('btnExportar');
 
-    tabla.innerHTML = `<tr><td colspan="12" style="text-align:center;">${I18N[idiomaActual].msgCargando}</td></tr>`;
+    tabla.innerHTML = `<tr><td colspan="12"><div class="loader-cell" role="status" aria-live="polite"><span class="loader-spinner" aria-hidden="true"></span><span>${I18N[idiomaActual].msgCargando}</span></div></td></tr>`;
     badgeCount.textContent = "...";
     btnExportar.disabled = true;
     renderAvisosProveedor(null);
@@ -1153,5 +1468,6 @@ function exportarExcel() {
 }
 </script>
 
-</body>
-</html>
+
+
+</body></html>
