@@ -468,6 +468,28 @@
 
         .car-link:hover { color: var(--signal); border-color: var(--signal); }
 
+        /* ============ COMPARTIR VEHÍCULO ============ */
+        .share-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            color: var(--steel);
+            transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+        }
+        .share-btn:hover { border-color: var(--signal); color: var(--signal); }
+        .share-btn.share-btn-copied {
+            background: #DCEEDD;
+            border-color: #1C6E3F;
+            color: #1C6E3F;
+        }
+
         /* ============ BADGE DE PUNTUACIÓN ============ */
         .score-badge {
             display: inline-block;
@@ -746,11 +768,12 @@
                     <th data-i18n="thContado">Contado</th>
                     <th data-i18n="thFinanciado">Financiado</th>
                     <th data-i18n="thPuntuacion">Puntuación</th>
+                    <th data-i18n="thCompartir">Compartir</th>
                 </tr>
             </thead>
             <tbody id="tablaResultados">
                 <tr>
-                    <td colspan="12" style="text-align:center; color: #8A94A0; padding: 32px 18px;" data-i18n="msgInicial">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
+                    <td colspan="13" style="text-align:center; color: #8A94A0; padding: 32px 18px;" data-i18n="msgInicial">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
                 </tr>
             </tbody>
         </table>
@@ -808,6 +831,9 @@ const I18N = {
         thContado: "Contado",
         thFinanciado: "Financiado",
         thPuntuacion: "Puntuación",
+        thCompartir: "Compartir",
+        btnCompartirTitulo: "Compartir este anuncio",
+        msgCopiarManual: "Copia el enlace:",
         msgInicial: 'Haz clic en "Filtrar y Buscar" para obtener resultados',
         msgCargando: "Cargando vehículos desde las fuentes seleccionadas...",
         msgSinResultados: "No se encontraron vehículos para los filtros aplicados.",
@@ -857,6 +883,9 @@ const I18N = {
         thContado: "Comptat",
         thFinanciado: "Finançat",
         thPuntuacion: "Puntuació",
+        thCompartir: "Compartir",
+        btnCompartirTitulo: "Comparteix aquest anunci",
+        msgCopiarManual: "Copia l'enllaç:",
         msgInicial: 'Fes clic a "Filtra i Cerca" per obtenir resultats',
         msgCargando: "Carregant vehicles des de les fonts seleccionades...",
         msgSinResultados: "No s'ha trobat cap vehicle amb els filtres aplicats.",
@@ -1055,12 +1084,60 @@ function renderPuntuacion(puntuacion) {
     return `<span class="score-badge ${clase}">${puntuacion}${emoji}</span>`;
 }
 
+// Escapa texto para poder insertarlo con seguridad dentro de un atributo
+// HTML (data-url/data-modelo) construido con template literals -- evita
+// que un modelo con comillas o '&' rompa el marcado.
+function escapeHtml(texto) {
+    if (texto === null || texto === undefined) return '';
+    return String(texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Comparte el enlace de un vehículo concreto: usa el selector nativo de
+// compartir del dispositivo si existe (típico en móvil), y si no,
+// copia el enlace al portapapeles con una confirmación visual breve.
+async function compartirVehiculo(btn) {
+    const url = btn.dataset.url;
+    const modelo = btn.dataset.modelo;
+
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: modelo, text: modelo, url: url });
+            return;
+        } catch (err) {
+            // El usuario cerró el selector nativo sin elegir nada: no hacemos nada más
+            if (err && err.name === 'AbortError') return;
+        }
+    }
+
+    try {
+        await navigator.clipboard.writeText(url);
+        mostrarCopiado(btn);
+    } catch (err) {
+        window.prompt(I18N[idiomaActual].msgCopiarManual, url);
+    }
+}
+
+function mostrarCopiado(btn) {
+    const original = btn.textContent;
+    btn.textContent = '✓';
+    btn.classList.add('share-btn-copied');
+    setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove('share-btn-copied');
+    }, 1500);
+}
+
 async function buscarCoches() {
     const tabla = document.getElementById('tablaResultados');
     const badgeCount = document.getElementById('numCoches');
     const btnExportar = document.getElementById('btnExportar');
 
-    tabla.innerHTML = `<tr><td colspan="12"><div class="loader-cell" role="status" aria-live="polite"><span class="loader-spinner" aria-hidden="true"></span><span>${I18N[idiomaActual].msgCargando}</span></div></td></tr>`;
+    tabla.innerHTML = `<tr><td colspan="13"><div class="loader-cell" role="status" aria-live="polite"><span class="loader-spinner" aria-hidden="true"></span><span>${I18N[idiomaActual].msgCargando}</span></div></td></tr>`;
     badgeCount.textContent = "...";
     btnExportar.disabled = true;
     renderAvisosProveedor(null);
@@ -1097,7 +1174,7 @@ async function buscarCoches() {
         renderAvisosProveedor(resData.proveedores);
 
         if (total === 0) {
-            tabla.innerHTML = `<tr><td colspan="12" style="text-align:center;">${I18N[idiomaActual].msgSinResultados}</td></tr>`;
+            tabla.innerHTML = `<tr><td colspan="13" style="text-align:center;">${I18N[idiomaActual].msgSinResultados}</td></tr>`;
             return;
         }
 
@@ -1119,6 +1196,9 @@ async function buscarCoches() {
                 <td><strong>${item.contado}</strong></td>
                 <td><strong>${item.financiado}</strong></td>
                 <td>${renderPuntuacion(item.puntuacion)}</td>
+                <td>
+                    <button type="button" class="share-btn" data-url="${escapeHtml(item.url)}" data-modelo="${escapeHtml(item.marca + ' ' + item.modelo)}" onclick="compartirVehiculo(this)" title="${I18N[idiomaActual].btnCompartirTitulo}">🔗</button>
+                </td>
             </tr>
         `).join('');
 
@@ -1126,7 +1206,7 @@ async function buscarCoches() {
         badgeCount.textContent = "0";
         ultimosResultados = [];
         btnExportar.disabled = true;
-        tabla.innerHTML = `<tr><td colspan="12" style="text-align:center; color: red;">${I18N[idiomaActual].msgError}</td></tr>`;
+        tabla.innerHTML = `<tr><td colspan="13" style="text-align:center; color: red;">${I18N[idiomaActual].msgError}</td></tr>`;
     }
 }
 
