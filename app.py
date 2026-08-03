@@ -1276,6 +1276,35 @@ def scrape_spoticar(marca="audi", tipo="todas"):
     return asyncio.run(scrape_spoticar_async(marca=marca, tipo=tipo))
 
 # ================= 10. AUTOSCOUT24 =================
+def obtener_precio_contado_real_autoscout(url_detalle, session):
+    """Cuando AutoScout24 marca un anuncio como 'precio condicional'
+    (ligado a financiación), el precio al contado real NO viene en el
+    listado de búsqueda -- solo aparece como texto libre dentro del
+    campo 'description' de la ficha individual del vehículo (ej.
+    'Precio al contado: 23290 euros'), confirmado contra una ficha real.
+
+    Se hace UNA petición adicional solo para estos casos concretos (no
+    para todos los vehículos), reutilizando el mismo patrón __NEXT_DATA__
+    que ya usa el listado de búsqueda."""
+    try:
+        res = session.get(url_detalle, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=8)
+        if res.status_code != 200:
+            return None
+        m = re.search(
+            r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
+            res.text, re.DOTALL
+        )
+        if not m:
+            return None
+        data = json.loads(m.group(1))
+        descripcion = data.get("props", {}).get("pageProps", {}).get("listingDetails", {}).get("description", "")
+        precio_match = re.search(r'Precio al contado:?\s*([\d.,]+)\s*euros?', descripcion, re.IGNORECASE)
+        if precio_match:
+            return limpiar_numero(precio_match.group(1))
+    except Exception as e:
+        print(f"[AutoScout24] No se pudo obtener el precio al contado real de {url_detalle}: {e}")
+    return None
+
 def scrape_autoscout24(marca="audi", tipo="todas", max_paginas=3):
     """AutoScout24 es una web Next.js: toda la información de cada anuncio
     de la página (precio, marca, modelo, km, potencia, combustible,
@@ -1333,10 +1362,30 @@ def scrape_autoscout24(marca="audi", tipo="todas", max_paginas=3):
                 if not modelo_txt:
                     continue
 
-                precio_val = listing.get("price", {}).get("priceRaw")
+                precio_info = listing.get("price", {})
+                precio_val = precio_info.get("priceRaw")
                 if not precio_val:
                     continue
-                contado = f"{int(precio_val):,}".replace(",", ".") + " €"
+
+                href = listing.get("url", "")
+                url_coche = href if href.startswith("http") else f"https://www.autoscout24.es{href}"
+
+                precio_destacado = f"{int(precio_val):,}".replace(",", ".") + " €"
+
+                # Cuando el precio es "condicional" (normalmente ligado a
+                # financiación), el número destacado del listado NO es el
+                # precio al contado real -- se intenta recuperar el real
+                # con UNA petición extra a la propia ficha (confirmado
+                # contra una ficha real: aparece como texto libre en el
+                # campo 'description'); si no se encuentra, se muestra
+                # "Consultar" en vez de un dato incorrecto duplicado.
+                if precio_info.get("isConditionalPrice"):
+                    contado_real = obtener_precio_contado_real_autoscout(url_coche, session)
+                    contado = f"{contado_real:,}".replace(",", ".") + " €" if contado_real else "Consultar"
+                    financiado = precio_destacado
+                else:
+                    contado = precio_destacado
+                    financiado = precio_destacado
 
                 # vehicleDetails es una lista de {data, iconName, ariaLabel};
                 # se indexa por iconName -- más estable que fiarse del orden
@@ -1351,9 +1400,6 @@ def scrape_autoscout24(marca="audi", tipo="todas", max_paginas=3):
                 combustible = extraer_combustible(detalles.get("gas_pump", "") or vehiculo.get("fuel", ""))
                 cambio = extraer_cambio(detalles.get("gearbox", "") or vehiculo.get("transmission", ""))
 
-                href = listing.get("url", "")
-                url_coche = href if href.startswith("http") else f"https://www.autoscout24.es{href}"
-
                 resultados.append({
                     "proveedor": "AutoScout24",
                     "categoria": "Ocasión",
@@ -1361,7 +1407,7 @@ def scrape_autoscout24(marca="audi", tipo="todas", max_paginas=3):
                     "modelo": modelo_txt,
                     "anio": anio_val,
                     "contado": contado,
-                    "financiado": contado,
+                    "financiado": financiado,
                     "potencia": potencia,
                     "kilometros": kilometros,
                     "combustible": combustible,
