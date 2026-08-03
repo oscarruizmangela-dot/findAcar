@@ -1275,6 +1275,111 @@ async def scrape_spoticar_async(marca="audi", tipo="todas", max_paginas=3):
 def scrape_spoticar(marca="audi", tipo="todas"):
     return asyncio.run(scrape_spoticar_async(marca=marca, tipo=tipo))
 
+# ================= 10. AUTOSCOUT24 =================
+def scrape_autoscout24(marca="audi", tipo="todas", max_paginas=3):
+    """AutoScout24 es una web Next.js: toda la información de cada anuncio
+    de la página (precio, marca, modelo, km, potencia, combustible,
+    cambio) viaja embebida como JSON estructurado dentro de un bloque
+    <script id="__NEXT_DATA__">, ya en el HTML servido por el servidor --
+    no hace falta parsear texto libre ni usar Playwright, con requests
+    es suficiente.
+
+    NOTA sobre el filtro de marca y paginación: no se ha podido verificar
+    en vivo por no tener acceso de red a autoscout24.es desde este
+    entorno. El patrón /lst/{marca}?atype=C&cy=E&page=N se basa en la
+    estructura de URL pública y estable de AutoScout24 y en los propios
+    parámetros (atype=C, cy=E) que aparecen en el pageQuery del HTML de
+    ejemplo -- pero, igual que con Spoticar, conviene probarlo aislado
+    antes de confiar en él del todo."""
+    resultados = []
+    marca_clean = marca.lower().strip()
+    session = requests.Session()
+    ids_procesados = set()
+
+    next_data_pattern = re.compile(
+        r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>',
+        re.DOTALL
+    )
+
+    for pagina in range(1, max_paginas + 1):
+        url_pagina = f"https://www.autoscout24.es/lst/{marca_clean}?atype=C&cy=E&page={pagina}"
+        try:
+            res = session.get(url_pagina, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=10)
+            if res.status_code != 200:
+                break
+
+            m = next_data_pattern.search(res.text)
+            if not m:
+                break
+            try:
+                data = json.loads(m.group(1))
+            except Exception:
+                break
+
+            listings = data.get("props", {}).get("pageProps", {}).get("listings", [])
+            if not listings:
+                break
+
+            nuevos_en_esta_pagina = 0
+            for listing in listings:
+                lid = listing.get("id")
+                if not lid or lid in ids_procesados:
+                    continue
+                ids_procesados.add(lid)
+
+                vehiculo = listing.get("vehicle", {})
+                marca_real = vehiculo.get("make", marca.capitalize())
+                modelo_txt = f"{vehiculo.get('model', '')} {vehiculo.get('modelVersionInput', '')}".strip()
+                if not modelo_txt:
+                    continue
+
+                precio_val = listing.get("price", {}).get("priceRaw")
+                if not precio_val:
+                    continue
+                contado = f"{int(precio_val):,}".replace(",", ".") + " €"
+
+                # vehicleDetails es una lista de {data, iconName, ariaLabel};
+                # se indexa por iconName -- más estable que fiarse del orden
+                # o del idioma del ariaLabel.
+                detalles = {d.get("iconName"): d.get("data", "") for d in listing.get("vehicleDetails", [])}
+
+                anio_match = re.search(r'(20\d{2})', detalles.get("calendar", ""))
+                anio_val = anio_match.group(1) if anio_match else "2020"
+
+                kilometros = extraer_km(detalles.get("mileage_odometer", ""))
+                potencia = extraer_potencia(detalles.get("speedometer", ""))
+                combustible = extraer_combustible(detalles.get("gas_pump", "") or vehiculo.get("fuel", ""))
+                cambio = extraer_cambio(detalles.get("gearbox", "") or vehiculo.get("transmission", ""))
+
+                href = listing.get("url", "")
+                url_coche = href if href.startswith("http") else f"https://www.autoscout24.es{href}"
+
+                resultados.append({
+                    "proveedor": "AutoScout24",
+                    "categoria": "Ocasión",
+                    "marca": marca_real,
+                    "modelo": modelo_txt,
+                    "anio": anio_val,
+                    "contado": contado,
+                    "financiado": contado,
+                    "potencia": potencia,
+                    "kilometros": kilometros,
+                    "combustible": combustible,
+                    "cambio": cambio,
+                    "url": url_coche
+                })
+                nuevos_en_esta_pagina += 1
+
+            if nuevos_en_esta_pagina == 0:
+                break
+
+        except Exception as e:
+            print(f"[AutoScout24] Error en {url_pagina}: {e}")
+            break
+
+    print(f"[AutoScout24] Vehículos extraídos: {len(resultados)}")
+    return resultados
+
 # ========== RUTAS FLASK ==========
 @app.route('/')
 def index():
@@ -1338,6 +1443,8 @@ def scrape():
         _ejecutar("Clicars", scrape_clicars, marca=marca, tipo=categoria)
     elif proveedor_raw == 'spoticar':
         _ejecutar("Spoticar", scrape_spoticar, marca=marca, tipo=categoria)
+    elif proveedor_raw == 'autoscout24':
+        _ejecutar("AutoScout24", scrape_autoscout24, marca=marca, tipo=categoria)
     else:
         _ejecutar("Autokolecció", scrape_autokoleccio, marca=marca, tipo=categoria)
         _ejecutar("Flexicar", scrape_flexicar, marca=marca)
@@ -1348,6 +1455,7 @@ def scrape():
         _ejecutar("Mibec", scrape_mibec, marca=marca, tipo=categoria)
         _ejecutar("Clicars", scrape_clicars, marca=marca, tipo=categoria)
         _ejecutar("Spoticar", scrape_spoticar, marca=marca, tipo=categoria)
+        _ejecutar("AutoScout24", scrape_autoscout24, marca=marca, tipo=categoria)
 
     resultados_filtrados = []
     for item in todos_los_resultados:
