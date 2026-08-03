@@ -490,6 +490,145 @@
             color: #1C6E3F;
         }
 
+        /* ============ FAVORITOS ============ */
+        .results-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-favoritos {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: transparent;
+            border: 1.5px solid var(--ink);
+            color: var(--ink);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: var(--font-body);
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .btn-favoritos:hover { background: var(--ink); color: var(--paper); }
+
+        .acciones-cell { display: flex; gap: 6px; }
+
+        .fav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            color: var(--steel);
+            transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+        }
+        .fav-btn:hover { border-color: #C79418; color: #C79418; }
+        .fav-btn.fav-btn-active {
+            background: #FFF6DC;
+            border-color: #C79418;
+            color: #C79418;
+        }
+
+        .favoritos-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(18, 24, 31, 0.55);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .favoritos-overlay.activo { display: flex; }
+
+        .favoritos-panel {
+            background: var(--paper);
+            border-radius: 12px;
+            max-width: 640px;
+            width: 100%;
+            max-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 16px 48px rgba(18, 24, 31, 0.3);
+        }
+
+        .favoritos-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--line);
+            flex-shrink: 0;
+        }
+        .favoritos-header h3 { margin: 0; font-family: var(--font-display); font-size: 1.1em; }
+
+        .favoritos-cerrar {
+            background: transparent;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            color: var(--steel);
+            line-height: 1;
+            padding: 4px;
+        }
+        .favoritos-cerrar:hover { color: var(--ink); }
+
+        .favoritos-body {
+            padding: 8px 22px 18px;
+            overflow-y: auto;
+        }
+
+        .favorito-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--line);
+        }
+        .favorito-row:last-child { border-bottom: none; }
+
+        .favorito-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .favorito-proveedor {
+            font-size: 0.72em;
+            color: var(--steel);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-family: var(--font-mono);
+        }
+        .favorito-precio { font-weight: 700; font-family: var(--font-mono); }
+
+        .favorito-acciones { display: flex; gap: 6px; flex-shrink: 0; }
+
+        .fav-quitar-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--steel);
+            transition: border-color 0.15s ease, color 0.15s ease;
+        }
+        .fav-quitar-btn:hover { border-color: #B0223D; color: #B0223D; }
+
+        .favoritos-vacio {
+            color: var(--steel-soft);
+            text-align: center;
+            padding: 36px 10px;
+        }
+
         /* ============ BADGE DE PUNTUACIÓN ============ */
         .score-badge {
             display: inline-block;
@@ -746,11 +885,27 @@
         <div class="results-count">
             <span data-i18n="labelEncontrados">Vehículos encontrados:</span> <span class="results-badge" id="numCoches">0</span>
         </div>
-        <button class="btn-export" id="btnExportar" onclick="exportarExcel()" data-i18n="btnExportar" disabled>⬇ Exportar a Excel</button>
+        <div class="results-actions">
+            <button class="btn-favoritos" id="btnFavoritos" onclick="abrirFavoritos()">
+                ⭐ <span data-i18n="labelFavoritos">Favoritos</span> (<span id="contadorFavoritos">0</span>)
+            </button>
+            <button class="btn-export" id="btnExportar" onclick="exportarExcel()" data-i18n="btnExportar" disabled>⬇ Exportar a Excel</button>
+        </div>
     </div>
 
     <!-- Avisos si algún proveedor ha vuelto sin resultados mientras otros sí -->
     <div class="provider-warnings" id="avisosProveedor" style="display: none;"></div>
+
+    <!-- Modal de vehículos favoritos -->
+    <div class="favoritos-overlay" id="favoritosOverlay" onclick="cerrarFavoritosSiFondo(event)">
+        <div class="favoritos-panel">
+            <div class="favoritos-header">
+                <h3 data-i18n="favoritosTitulo">Vehículos favoritos</h3>
+                <button class="favoritos-cerrar" onclick="cerrarFavoritos()">✕</button>
+            </div>
+            <div class="favoritos-body" id="favoritosBody"></div>
+        </div>
+    </div>
 
     <div class="table-wrap">
         <table>
@@ -768,7 +923,7 @@
                     <th data-i18n="thContado">Contado</th>
                     <th data-i18n="thFinanciado">Financiado</th>
                     <th data-i18n="thPuntuacion">Puntuación</th>
-                    <th data-i18n="thCompartir">Compartir</th>
+                    <th data-i18n="thCompartir">Acciones</th>
                 </tr>
             </thead>
             <tbody id="tablaResultados">
@@ -831,7 +986,12 @@ const I18N = {
         thContado: "Contado",
         thFinanciado: "Financiado",
         thPuntuacion: "Puntuación",
-        thCompartir: "Compartir",
+        thCompartir: "Acciones",
+        labelFavoritos: "Favoritos",
+        favoritosTitulo: "Vehículos favoritos",
+        favoritosVacio: "Aún no has guardado ningún vehículo favorito.",
+        btnGuardarFavorito: "Guardar en favoritos",
+        btnQuitarFavorito: "Quitar de favoritos",
         btnCompartirTitulo: "Compartir este anuncio",
         msgCopiarManual: "Copia el enlace:",
         msgInicial: 'Haz clic en "Filtrar y Buscar" para obtener resultados',
@@ -883,7 +1043,12 @@ const I18N = {
         thContado: "Comptat",
         thFinanciado: "Finançat",
         thPuntuacion: "Puntuació",
-        thCompartir: "Compartir",
+        thCompartir: "Accions",
+        labelFavoritos: "Preferits",
+        favoritosTitulo: "Vehicles preferits",
+        favoritosVacio: "Encara no has guardat cap vehicle preferit.",
+        btnGuardarFavorito: "Desa als preferits",
+        btnQuitarFavorito: "Treu dels preferits",
         btnCompartirTitulo: "Comparteix aquest anunci",
         msgCopiarManual: "Copia l'enllaç:",
         msgInicial: 'Fes clic a "Filtra i Cerca" per obtenir resultats',
@@ -1051,6 +1216,7 @@ window.onload = function() {
     updatePotenciaSlider();
     updateKmSlider();
     aplicarTraducciones();
+    actualizarContadorFavoritos();
 };
 
 // Muestra/oculta la zona de filtros para poder trabajar con más espacio
@@ -1100,6 +1266,145 @@ function escapeHtml(texto) {
 // Comparte el enlace de un vehículo concreto: usa el selector nativo de
 // compartir del dispositivo si existe (típico en móvil), y si no,
 // copia el enlace al portapapeles con una confirmación visual breve.
+// ============ FAVORITOS ============
+// Se guardan en localStorage del navegador (persisten entre sesiones,
+// no requieren backend). Se identifican por su URL, que es única por
+// vehículo y estable entre búsquedas distintas.
+const CLAVE_FAVORITOS = 'buscadorVehiculosFavoritos';
+
+function obtenerFavoritos() {
+    try {
+        const raw = localStorage.getItem(CLAVE_FAVORITOS);
+        return raw ? JSON.parse(raw) : [];
+    } catch (err) {
+        return [];
+    }
+}
+
+function guardarFavoritos(lista) {
+    try {
+        localStorage.setItem(CLAVE_FAVORITOS, JSON.stringify(lista));
+    } catch (err) {
+        console.error('No se pudo guardar en favoritos:', err);
+    }
+}
+
+function esFavorito(url) {
+    return obtenerFavoritos().some(f => f.url === url);
+}
+
+function actualizarContadorFavoritos() {
+    const contador = document.getElementById('contadorFavoritos');
+    if (contador) contador.textContent = obtenerFavoritos().length;
+}
+
+// Construye el botón de estrella para una fila de la grid, con el
+// icono/clase correctos según si ese vehículo ya está en favoritos.
+function renderFavBtn(item) {
+    const activo = esFavorito(item.url);
+    const clase = activo ? 'fav-btn fav-btn-active' : 'fav-btn';
+    const icono = activo ? '★' : '☆';
+    const titulo = activo ? I18N[idiomaActual].btnQuitarFavorito : I18N[idiomaActual].btnGuardarFavorito;
+    return `<button type="button" class="${clase}" data-url="${escapeHtml(item.url)}" onclick="toggleFavoritoDesdeBoton(this)" title="${titulo}">${icono}</button>`;
+}
+
+// Se llama desde la grid principal: busca el vehículo completo en los
+// últimos resultados (por URL) para poder guardar toda su información.
+function toggleFavoritoDesdeBoton(btn) {
+    const url = btn.dataset.url;
+    const item = ultimosResultados.find(r => r.url === url);
+    if (!item) return;
+    toggleFavorito(item, btn);
+}
+
+function toggleFavorito(item, btn) {
+    let favoritos = obtenerFavoritos();
+    const idx = favoritos.findIndex(f => f.url === item.url);
+
+    if (idx >= 0) {
+        favoritos.splice(idx, 1);
+        if (btn) {
+            btn.textContent = '☆';
+            btn.classList.remove('fav-btn-active');
+            btn.title = I18N[idiomaActual].btnGuardarFavorito;
+        }
+    } else {
+        favoritos.push(item);
+        if (btn) {
+            btn.textContent = '★';
+            btn.classList.add('fav-btn-active');
+            btn.title = I18N[idiomaActual].btnQuitarFavorito;
+        }
+    }
+
+    guardarFavoritos(favoritos);
+    actualizarContadorFavoritos();
+
+    if (document.getElementById('favoritosOverlay').classList.contains('activo')) {
+        renderFavoritos();
+    }
+}
+
+function abrirFavoritos() {
+    renderFavoritos();
+    document.getElementById('favoritosOverlay').classList.add('activo');
+}
+
+function cerrarFavoritos() {
+    document.getElementById('favoritosOverlay').classList.remove('activo');
+}
+
+function cerrarFavoritosSiFondo(event) {
+    if (event.target.id === 'favoritosOverlay') cerrarFavoritos();
+}
+
+// Pinta la lista de favoritos dentro del modal, con botón de compartir
+// y botón de quitar (desmarcar) en cada fila.
+function renderFavoritos() {
+    const body = document.getElementById('favoritosBody');
+    const favoritos = obtenerFavoritos();
+
+    if (favoritos.length === 0) {
+        body.innerHTML = `<p class="favoritos-vacio">${I18N[idiomaActual].favoritosVacio}</p>`;
+        return;
+    }
+
+    body.innerHTML = favoritos.map(item => `
+        <div class="favorito-row">
+            <div class="favorito-info">
+                <span class="favorito-proveedor">${escapeHtml(item.proveedor)}</span>
+                <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="car-link">${escapeHtml(item.marca + ' ' + item.modelo)} ↗</a>
+                <span class="favorito-precio">${item.contado}</span>
+            </div>
+            <div class="favorito-acciones">
+                <button type="button" class="share-btn" data-url="${escapeHtml(item.url)}" data-modelo="${escapeHtml(item.marca + ' ' + item.modelo)}" onclick="compartirVehiculo(this)" title="${I18N[idiomaActual].btnCompartirTitulo}">🔗</button>
+                <button type="button" class="fav-quitar-btn" data-url="${escapeHtml(item.url)}" onclick="quitarFavoritoDesdeModal(this)" title="${I18N[idiomaActual].btnQuitarFavorito}">✕</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Desmarca un vehículo desde el propio visor de favoritos: se quita de
+// localStorage, desaparece de la lista del modal, y si ese mismo
+// vehículo está visible en la grid principal en ese momento, su
+// estrella se actualiza también para mantener los dos sitios en sync.
+function quitarFavoritoDesdeModal(btn) {
+    const url = btn.dataset.url;
+    let favoritos = obtenerFavoritos();
+    favoritos = favoritos.filter(f => f.url !== url);
+    guardarFavoritos(favoritos);
+    actualizarContadorFavoritos();
+    renderFavoritos();
+
+    document.querySelectorAll('.fav-btn').forEach(b => {
+        if (b.dataset.url === url) {
+            b.textContent = '☆';
+            b.classList.remove('fav-btn-active');
+            b.title = I18N[idiomaActual].btnGuardarFavorito;
+        }
+    });
+}
+
 async function compartirVehiculo(btn) {
     const url = btn.dataset.url;
     const modelo = btn.dataset.modelo;
@@ -1197,7 +1502,10 @@ async function buscarCoches() {
                 <td><strong>${item.financiado}</strong></td>
                 <td>${renderPuntuacion(item.puntuacion)}</td>
                 <td>
-                    <button type="button" class="share-btn" data-url="${escapeHtml(item.url)}" data-modelo="${escapeHtml(item.marca + ' ' + item.modelo)}" onclick="compartirVehiculo(this)" title="${I18N[idiomaActual].btnCompartirTitulo}">🔗</button>
+                    <div class="acciones-cell">
+                        ${renderFavBtn(item)}
+                        <button type="button" class="share-btn" data-url="${escapeHtml(item.url)}" data-modelo="${escapeHtml(item.marca + ' ' + item.modelo)}" onclick="compartirVehiculo(this)" title="${I18N[idiomaActual].btnCompartirTitulo}">🔗</button>
+                    </div>
                 </td>
             </tr>
         `).join('');
