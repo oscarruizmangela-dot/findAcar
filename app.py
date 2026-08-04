@@ -8,6 +8,7 @@ import json
 import re
 import asyncio
 from playwright.async_api import async_playwright
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_PATH = os.path.join(BASE_DIR, 'templates', 'index.html')
@@ -1560,16 +1561,39 @@ def scrape():
     elif proveedor_raw == 'autoscout24':
         _ejecutar("AutoScout24", scrape_autoscout24, marca=marca, tipo=categoria)
     else:
-        _ejecutar("Autokolecció", scrape_autokoleccio, marca=marca, tipo=categoria)
-        _ejecutar("Flexicar", scrape_flexicar, marca=marca)
-        _ejecutar("Coches.net", scrape_cochesnet, marca=marca)
-        _ejecutar("Cochesinternet.net", scrape_cochesinternet, marca=marca, tipo=categoria)
-        _ejecutar("Coches.com", scrape_cochescom, marca=marca, tipo=categoria)
-        _ejecutar("OcasionPlus", scrape_ocasionplus, marca=marca, tipo=categoria)
-        _ejecutar("Mibec", scrape_mibec, marca=marca, tipo=categoria)
-        _ejecutar("Clicars", scrape_clicars, marca=marca, tipo=categoria)
-        _ejecutar("Spoticar", scrape_spoticar, marca=marca, tipo=categoria)
-        _ejecutar("AutoScout24", scrape_autoscout24, marca=marca, tipo=categoria)
+        # Antes esto llamaba a los 10 scrapers en secuencia dentro de la misma
+        # petición HTTP -- en local no había límite de tiempo y acababa
+        # "funcionando", pero en Render la suma de los ~10 tiempos supera el
+        # timeout del worker/proxy y la petición cae con 500/502 (confirmado
+        # en el test de estabilidad: dos fallos consecutivos justo pasado el
+        # minuto 2). Se ejecutan en paralelo con hilos para que el tiempo
+        # total sea el del scraper más lento, no la suma de todos.
+        #
+        # max_workers=5 (no 10) a propósito: varios scrapers levantan un
+        # navegador Playwright real, y lanzar 10 a la vez puede disparar el
+        # consumo de memoria del plan de Render y provocar un OOM (502
+        # distinto pero igual de bloqueante). Si tras desplegar esto se ve
+        # estable, se puede subir gradualmente; si aparecen 502 nuevos,
+        # bajarlo en vez de subirlo.
+        tareas = [
+            ("Autokolecció", scrape_autokoleccio, dict(marca=marca, tipo=categoria)),
+            ("Flexicar", scrape_flexicar, dict(marca=marca)),
+            ("Coches.net", scrape_cochesnet, dict(marca=marca)),
+            ("Cochesinternet.net", scrape_cochesinternet, dict(marca=marca, tipo=categoria)),
+            ("Coches.com", scrape_cochescom, dict(marca=marca, tipo=categoria)),
+            ("OcasionPlus", scrape_ocasionplus, dict(marca=marca, tipo=categoria)),
+            ("Mibec", scrape_mibec, dict(marca=marca, tipo=categoria)),
+            ("Clicars", scrape_clicars, dict(marca=marca, tipo=categoria)),
+            ("Spoticar", scrape_spoticar, dict(marca=marca, tipo=categoria)),
+            ("AutoScout24", scrape_autoscout24, dict(marca=marca, tipo=categoria)),
+        ]
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futuros = [
+                executor.submit(_ejecutar, nombre, funcion, **kwargs)
+                for nombre, funcion, kwargs in tareas
+            ]
+            for futuro in as_completed(futuros):
+                futuro.result()  # _ejecutar ya captura sus propias excepciones; esto solo repropaga fallos inesperados del propio hilo
 
     resultados_filtrados = []
     for item in todos_los_resultados:
