@@ -1564,33 +1564,47 @@ def scrape():
         # Antes esto llamaba a los 10 scrapers en secuencia dentro de la misma
         # petición HTTP -- en local no había límite de tiempo y acababa
         # "funcionando", pero en Render la suma de los ~10 tiempos supera el
-        # timeout del worker/proxy y la petición cae con 500/502 (confirmado
-        # en el test de estabilidad: dos fallos consecutivos justo pasado el
-        # minuto 2). Se ejecutan en paralelo con hilos para que el tiempo
-        # total sea el del scraper más lento, no la suma de todos.
+        # timeout de Gunicorn (--timeout 120 en el Dockerfile) y la petición
+        # cae con 500/502.
         #
-        # max_workers=5 (no 10) a propósito: varios scrapers levantan un
-        # navegador Playwright real, y lanzar 10 a la vez puede disparar el
-        # consumo de memoria del plan de Render y provocar un OOM (502
-        # distinto pero igual de bloqueante). Si tras desplegar esto se ve
-        # estable, se puede subir gradualmente; si aparecen 502 nuevos,
-        # bajarlo en vez de subirlo.
-        tareas = [
+        # Un primer intento con 5 hilos a la vez para todos los scrapers
+        # provocó un crash distinto: OOM. La causa es que 5 de los 10
+        # scrapers levantan un navegador Chromium real vía Playwright
+        # (pesados en memoria) y los otros 5 solo hacen requests+BeautifulSoup
+        # (memoria despreciable). Si el orden de la cola juntaba varios
+        # navegadores a la vez, el plan de Render se quedaba sin RAM y
+        # Gunicorn entraba en un bucle de SIGKILL.
+        #
+        # Solución: dos pools separados. Los "pesados" (Playwright) van con
+        # concurrencia limitada a 2 navegadores como máximo; los "ligeros"
+        # (requests) van con más concurrencia porque no cuestan memoria.
+        # Si tras desplegar esto SIGUE habiendo OOM, bajar heavy a 1 (vuelve
+        # a ser secuencial solo para los navegadores, pero los ligeros
+        # seguirían en paralelo). Si va sobrado, se puede subir a 3.
+        tareas_pesadas = [
             ("Autokolecció", scrape_autokoleccio, dict(marca=marca, tipo=categoria)),
             ("Flexicar", scrape_flexicar, dict(marca=marca)),
             ("Coches.net", scrape_cochesnet, dict(marca=marca)),
+            ("Clicars", scrape_clicars, dict(marca=marca, tipo=categoria)),
+            ("Spoticar", scrape_spoticar, dict(marca=marca, tipo=categoria)),
+        ]
+        tareas_ligeras = [
             ("Cochesinternet.net", scrape_cochesinternet, dict(marca=marca, tipo=categoria)),
             ("Coches.com", scrape_cochescom, dict(marca=marca, tipo=categoria)),
             ("OcasionPlus", scrape_ocasionplus, dict(marca=marca, tipo=categoria)),
             ("Mibec", scrape_mibec, dict(marca=marca, tipo=categoria)),
-            ("Clicars", scrape_clicars, dict(marca=marca, tipo=categoria)),
-            ("Spoticar", scrape_spoticar, dict(marca=marca, tipo=categoria)),
             ("AutoScout24", scrape_autoscout24, dict(marca=marca, tipo=categoria)),
         ]
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futuros = [
-                executor.submit(_ejecutar, nombre, funcion, **kwargs)
-                for nombre, funcion, kwargs in tareas
+        with ThreadPoolExecutor(max_workers=2) as ejecutor_pesado, \
+             ThreadPoolExecutor(max_workers=5) as ejecutor_ligero:
+            futuros = []
+            futuros += [
+                ejecutor_pesado.submit(_ejecutar, nombre, funcion, **kwargs)
+                for nombre, funcion, kwargs in tareas_pesadas
+            ]
+            futuros += [
+                ejecutor_ligero.submit(_ejecutar, nombre, funcion, **kwargs)
+                for nombre, funcion, kwargs in tareas_ligeras
             ]
             for futuro in as_completed(futuros):
                 futuro.result()  # _ejecutar ya captura sus propias excepciones; esto solo repropaga fallos inesperados del propio hilo
