@@ -628,6 +628,81 @@
         }
         .fav-quitar-btn:hover { border-color: #B0223D; color: #B0223D; }
 
+        /* ============ CUENTA / LOGIN ============ */
+        .cuenta-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-cuenta {
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--ink);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.78em;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-body);
+        }
+        .btn-cuenta:hover { border-color: var(--ink); }
+        .cuenta-email {
+            font-size: 0.78em;
+            color: var(--steel);
+            font-family: var(--font-mono);
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cuenta-panel { max-width: 380px; }
+
+        .cuenta-form { display: flex; flex-direction: column; gap: 12px; padding: 4px 22px 22px; }
+        .cuenta-form label { font-size: 0.82em; font-weight: 600; display: flex; flex-direction: column; gap: 5px; }
+        .cuenta-form input {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 9px 11px;
+            font-size: 0.95em;
+            font-family: var(--font-body);
+        }
+        .cuenta-form input:focus { outline: none; border-color: var(--signal); }
+
+        .cuenta-error {
+            display: none;
+            background: #FBE4E8;
+            color: #B0223D;
+            padding: 9px 11px;
+            border-radius: 8px;
+            font-size: 0.82em;
+        }
+        .cuenta-error.activo { display: block; }
+
+        .btn-cuenta-enviar {
+            background: var(--ink);
+            color: var(--paper);
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .btn-cuenta-enviar:hover { opacity: 0.9; }
+
+        .cuenta-toggle {
+            background: none;
+            border: none;
+            color: var(--steel);
+            font-size: 0.8em;
+            text-decoration: underline;
+            cursor: pointer;
+            padding: 0;
+            text-align: left;
+        }
+        .cuenta-toggle:hover { color: var(--ink); }
+
         .favoritos-vacio {
             color: var(--steel-soft);
             text-align: center;
@@ -722,9 +797,35 @@
                 <button type="button" class="lang-btn active" data-lang="es" onclick="cambiarIdioma(&#39;es&#39;)">ES</button>
                 <button type="button" class="lang-btn" data-lang="ca" onclick="cambiarIdioma(&#39;ca&#39;)">CA</button>
             </div>
+            <div class="cuenta-switch" id="cuentaSwitch">
+                <button type="button" class="btn-cuenta" onclick="abrirCuenta('login')" data-i18n="btnIniciarSesion">Iniciar sesión</button>
+            </div>
         </div>
         <h1 data-i18n="h1">Buscador de Vehículos (KM0 / Segunda Mano)</h1>
         <p class="header-sub" data-i18n="sub">Filtra por marca, año y precio y encuentra al instante lo que ofrecen los principales portales de coches de segunda mano y KM0 en España.</p>
+
+        <!-- Modal de login / registro -->
+        <div class="favoritos-overlay" id="cuentaOverlay" onclick="cerrarCuentaSiFondo(event)">
+            <div class="favoritos-panel cuenta-panel">
+                <div class="favoritos-header">
+                    <h3 id="cuentaTitulo" data-i18n="cuentaTituloLogin">Iniciar sesión</h3>
+                    <button class="favoritos-cerrar" onclick="cerrarCuenta()">✕</button>
+                </div>
+                <form class="cuenta-form" id="formCuenta" onsubmit="return enviarFormCuenta(event)">
+                    <div class="cuenta-error" id="cuentaError"></div>
+                    <label>
+                        <span data-i18n="cuentaEmail">Email</span>
+                        <input type="email" id="cuentaEmailInput" required autocomplete="email">
+                    </label>
+                    <label>
+                        <span data-i18n="cuentaPassword">Contraseña</span>
+                        <input type="password" id="cuentaPasswordInput" required minlength="8" autocomplete="current-password">
+                    </label>
+                    <button type="submit" class="btn-cuenta-enviar" id="cuentaBtnEnviar" data-i18n="btnIniciarSesion">Iniciar sesión</button>
+                    <button type="button" class="cuenta-toggle" id="cuentaToggleModo" onclick="alternarModoCuenta()" data-i18n="cuentaIrARegistro">¿No tienes cuenta? Regístrate</button>
+                </form>
+            </div>
+        </div>
         <div class="source-legend">
             <span class="source-chip"><span class="source-dot c1"></span>Flexicar</span>
             <span class="source-chip"><span class="source-dot c2"></span>Autokolecció</span>
@@ -999,6 +1100,15 @@ const I18N = {
         btnQuitarFavorito: "Quitar de favoritos",
         btnCompartirTitulo: "Compartir este anuncio",
         msgCopiarManual: "Copia el enlace:",
+        btnIniciarSesion: "Iniciar sesión",
+        btnCerrarSesion: "Cerrar sesión",
+        cuentaTituloLogin: "Iniciar sesión",
+        cuentaTituloRegistro: "Crear cuenta",
+        cuentaEmail: "Email",
+        cuentaPassword: "Contraseña",
+        cuentaIrARegistro: "¿No tienes cuenta? Regístrate",
+        cuentaIrALogin: "¿Ya tienes cuenta? Inicia sesión",
+        cuentaErrorGenerico: "Ha ocurrido un error. Inténtalo de nuevo.",
         msgInicial: 'Haz clic en "Filtrar y Buscar" para obtener resultados',
         msgCargando: "Cargando vehículos desde las fuentes seleccionadas...",
         msgSinResultados: "No se encontraron vehículos para los filtros aplicados.",
@@ -1056,6 +1166,15 @@ const I18N = {
         btnQuitarFavorito: "Treu dels preferits",
         btnCompartirTitulo: "Comparteix aquest anunci",
         msgCopiarManual: "Copia l'enllaç:",
+        btnIniciarSesion: "Inicia sessió",
+        btnCerrarSesion: "Tanca sessió",
+        cuentaTituloLogin: "Inicia sessió",
+        cuentaTituloRegistro: "Crea un compte",
+        cuentaEmail: "Email",
+        cuentaPassword: "Contrasenya",
+        cuentaIrARegistro: "No tens compte? Registra't",
+        cuentaIrALogin: "Ja tens compte? Inicia sessió",
+        cuentaErrorGenerico: "S'ha produït un error. Torna-ho a provar.",
         msgInicial: 'Fes clic a "Filtra i Cerca" per obtenir resultats',
         msgCargando: "Carregant vehicles des de les fonts seleccionades...",
         msgSinResultados: "No s'ha trobat cap vehicle amb els filtres aplicats.",
@@ -1085,6 +1204,10 @@ function cambiarIdioma(lang) {
     idiomaActual = lang;
     localStorage.setItem('idiomaBuscador', lang);
     aplicarTraducciones();
+    pintarCuentaSwitch();
+    if (document.getElementById('cuentaOverlay').classList.contains('activo')) {
+        aplicarModoCuenta();
+    }
 }
 
 // Categoría seleccionada mediante el control segmentado (ya no es un <select>)
@@ -1221,7 +1344,7 @@ window.onload = function() {
     updatePotenciaSlider();
     updateKmSlider();
     aplicarTraducciones();
-    actualizarContadorFavoritos();
+    cargarEstadoSesion();
 };
 
 // Muestra/oculta la zona de filtros para poder trabajar con más espacio
@@ -1272,12 +1395,18 @@ function escapeHtml(texto) {
 // compartir del dispositivo si existe (típico en móvil), y si no,
 // copia el enlace al portapapeles con una confirmación visual breve.
 // ============ FAVORITOS ============
-// Se guardan en localStorage del navegador (persisten entre sesiones,
-// no requieren backend). Se identifican por su URL, que es única por
-// vehículo y estable entre búsquedas distintas.
+// Los favoritos viven en memoria (favoritosCache) mientras dura la visita,
+// y se persisten en uno de dos sitios según si hay sesión iniciada:
+//   - localStorage del navegador, si NO hay usuario logueado (como
+//     siempre: favoritos ligados a ese dispositivo/navegador concreto).
+//   - el backend (tabla `favoritos`), si hay sesión -> los favoritos
+//     viajan con la cuenta, se ven desde cualquier dispositivo.
+// El cambio de una fuente a otra pasa automáticamente al iniciar/cerrar
+// sesión (ver cargarFavoritos, llamada desde cargarEstadoSesion).
 const CLAVE_FAVORITOS = 'buscadorVehiculosFavoritos';
+let favoritosCache = [];
 
-function obtenerFavoritos() {
+function leerFavoritosLocalStorage() {
     try {
         const raw = localStorage.getItem(CLAVE_FAVORITOS);
         return raw ? JSON.parse(raw) : [];
@@ -1286,7 +1415,7 @@ function obtenerFavoritos() {
     }
 }
 
-function guardarFavoritos(lista) {
+function guardarFavoritosLocalStorage(lista) {
     try {
         localStorage.setItem(CLAVE_FAVORITOS, JSON.stringify(lista));
     } catch (err) {
@@ -1294,13 +1423,61 @@ function guardarFavoritos(lista) {
     }
 }
 
+// Trae los favoritos de la fuente que corresponda (servidor o
+// localStorage) y refresca toda la UI que depende de ellos. Se llama al
+// cargar la página y justo después de iniciar/cerrar sesión.
+async function cargarFavoritos() {
+    if (usuarioActual) {
+        try {
+            const resp = await fetch('/api/favoritos');
+            const data = await resp.json();
+            favoritosCache = (data && data.favoritos) ? data.favoritos : [];
+        } catch (err) {
+            console.error('No se pudieron cargar los favoritos del servidor:', err);
+            favoritosCache = [];
+        }
+    } else {
+        favoritosCache = leerFavoritosLocalStorage();
+    }
+    actualizarContadorFavoritos();
+    refrescarEstrellasFavoritos();
+    if (document.getElementById('favoritosOverlay').classList.contains('activo')) {
+        renderFavoritos();
+    }
+}
+
 function esFavorito(url) {
-    return obtenerFavoritos().some(f => f.url === url);
+    return favoritosCache.some(f => f.url === url);
 }
 
 function actualizarContadorFavoritos() {
     const contador = document.getElementById('contadorFavoritos');
-    if (contador) contador.textContent = obtenerFavoritos().length;
+    if (contador) contador.textContent = favoritosCache.length;
+}
+
+// Repinta el estado (★/☆) de todas las estrellas de un vehículo concreto
+// que estén visibles en la grid principal.
+function pintarEstadoFavoritoPorUrl(url, activo) {
+    document.querySelectorAll('.fav-btn').forEach(b => {
+        if (b.dataset.url === url) {
+            b.textContent = activo ? '★' : '☆';
+            b.classList.toggle('fav-btn-active', activo);
+            b.title = activo ? I18N[idiomaActual].btnQuitarFavorito : I18N[idiomaActual].btnGuardarFavorito;
+        }
+    });
+}
+
+// Igual que lo anterior pero para TODAS las estrellas visibles a la vez
+// -- hace falta tras cargar favoritos de forma asíncrona (por ejemplo,
+// justo después de iniciar sesión), cuando la grid ya estaba pintada
+// antes de saber qué vehículos son favoritos de esa cuenta.
+function refrescarEstrellasFavoritos() {
+    document.querySelectorAll('.fav-btn').forEach(b => {
+        const activo = esFavorito(b.dataset.url);
+        b.textContent = activo ? '★' : '☆';
+        b.classList.toggle('fav-btn-active', activo);
+        b.title = activo ? I18N[idiomaActual].btnQuitarFavorito : I18N[idiomaActual].btnGuardarFavorito;
+    });
 }
 
 // Construye el botón de estrella para una fila de la grid, con el
@@ -1319,34 +1496,52 @@ function toggleFavoritoDesdeBoton(btn) {
     const url = btn.dataset.url;
     const item = ultimosResultados.find(r => r.url === url);
     if (!item) return;
-    toggleFavorito(item, btn);
+    toggleFavorito(item);
 }
 
-function toggleFavorito(item, btn) {
-    let favoritos = obtenerFavoritos();
-    const idx = favoritos.findIndex(f => f.url === item.url);
+// Actualiza la UI al instante (optimista) y persiste el cambio detrás:
+// en el servidor si hay sesión, en localStorage si no. Si el guardado en
+// el servidor falla (red caída, sesión caducada...), se deshace el
+// cambio local y se avisa por consola en vez de dejar la UI desincronizada
+// con lo que realmente hay guardado.
+async function toggleFavorito(item) {
+    const idx = favoritosCache.findIndex(f => f.url === item.url);
+    const yaEra = idx >= 0;
 
-    if (idx >= 0) {
-        favoritos.splice(idx, 1);
-        if (btn) {
-            btn.textContent = '☆';
-            btn.classList.remove('fav-btn-active');
-            btn.title = I18N[idiomaActual].btnGuardarFavorito;
-        }
+    if (yaEra) {
+        favoritosCache.splice(idx, 1);
     } else {
-        favoritos.push(item);
-        if (btn) {
-            btn.textContent = '★';
-            btn.classList.add('fav-btn-active');
-            btn.title = I18N[idiomaActual].btnQuitarFavorito;
-        }
+        favoritosCache.push(item);
     }
-
-    guardarFavoritos(favoritos);
+    pintarEstadoFavoritoPorUrl(item.url, !yaEra);
     actualizarContadorFavoritos();
-
     if (document.getElementById('favoritosOverlay').classList.contains('activo')) {
         renderFavoritos();
+    }
+
+    try {
+        if (usuarioActual) {
+            const resp = await fetch('/api/favoritos', {
+                method: yaEra ? 'DELETE' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(yaEra ? { url: item.url } : { item })
+            });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        } else {
+            guardarFavoritosLocalStorage(favoritosCache);
+        }
+    } catch (err) {
+        console.error('No se pudo guardar el cambio en favoritos, deshaciendo:', err);
+        if (yaEra) {
+            favoritosCache.splice(idx, 0, item);
+        } else {
+            favoritosCache = favoritosCache.filter(f => f.url !== item.url);
+        }
+        pintarEstadoFavoritoPorUrl(item.url, yaEra);
+        actualizarContadorFavoritos();
+        if (document.getElementById('favoritosOverlay').classList.contains('activo')) {
+            renderFavoritos();
+        }
     }
 }
 
@@ -1367,7 +1562,7 @@ function cerrarFavoritosSiFondo(event) {
 // y botón de quitar (desmarcar) en cada fila.
 function renderFavoritos() {
     const body = document.getElementById('favoritosBody');
-    const favoritos = obtenerFavoritos();
+    const favoritos = favoritosCache;
 
     if (favoritos.length === 0) {
         body.innerHTML = `<p class="favoritos-vacio">${I18N[idiomaActual].favoritosVacio}</p>`;
@@ -1389,25 +1584,125 @@ function renderFavoritos() {
     `).join('');
 }
 
-// Desmarca un vehículo desde el propio visor de favoritos: se quita de
-// localStorage, desaparece de la lista del modal, y si ese mismo
-// vehículo está visible en la grid principal en ese momento, su
-// estrella se actualiza también para mantener los dos sitios en sync.
+// Desmarca un vehículo desde el propio visor de favoritos. toggleFavorito
+// ya se encarga de persistir el cambio (servidor o localStorage) y de
+// mantener la estrella de la grid principal en sync, si está visible.
 function quitarFavoritoDesdeModal(btn) {
     const url = btn.dataset.url;
-    let favoritos = obtenerFavoritos();
-    favoritos = favoritos.filter(f => f.url !== url);
-    guardarFavoritos(favoritos);
-    actualizarContadorFavoritos();
-    renderFavoritos();
+    const item = favoritosCache.find(f => f.url === url);
+    if (!item) return;
+    toggleFavorito(item);
+}
 
-    document.querySelectorAll('.fav-btn').forEach(b => {
-        if (b.dataset.url === url) {
-            b.textContent = '☆';
-            b.classList.remove('fav-btn-active');
-            b.title = I18N[idiomaActual].btnGuardarFavorito;
+// ============ CUENTA (LOGIN / REGISTRO) ============
+// usuarioActual: null si no hay sesión (modo invitado, favoritos en
+// localStorage); email en texto si hay sesión (favoritos en servidor).
+let usuarioActual = null;
+let modoCuentaActual = 'login'; // 'login' | 'registro'
+
+function abrirCuenta(modo) {
+    modoCuentaActual = modo || 'login';
+    aplicarModoCuenta();
+    document.getElementById('cuentaError').classList.remove('activo');
+    document.getElementById('formCuenta').reset();
+    document.getElementById('cuentaOverlay').classList.add('activo');
+}
+
+function cerrarCuenta() {
+    document.getElementById('cuentaOverlay').classList.remove('activo');
+}
+
+function cerrarCuentaSiFondo(event) {
+    if (event.target.id === 'cuentaOverlay') cerrarCuenta();
+}
+
+function alternarModoCuenta() {
+    modoCuentaActual = modoCuentaActual === 'login' ? 'registro' : 'login';
+    aplicarModoCuenta();
+}
+
+function aplicarModoCuenta() {
+    const t = I18N[idiomaActual];
+    const esLogin = modoCuentaActual === 'login';
+    document.getElementById('cuentaTitulo').textContent = esLogin ? t.cuentaTituloLogin : t.cuentaTituloRegistro;
+    document.getElementById('cuentaBtnEnviar').textContent = esLogin ? t.btnIniciarSesion : t.cuentaTituloRegistro;
+    document.getElementById('cuentaToggleModo').textContent = esLogin ? t.cuentaIrARegistro : t.cuentaIrALogin;
+    document.getElementById('cuentaPasswordInput').setAttribute('autocomplete', esLogin ? 'current-password' : 'new-password');
+}
+
+async function enviarFormCuenta(event) {
+    event.preventDefault();
+    const email = document.getElementById('cuentaEmailInput').value.trim();
+    const password = document.getElementById('cuentaPasswordInput').value;
+    const errorBox = document.getElementById('cuentaError');
+    errorBox.classList.remove('activo');
+
+    const endpoint = modoCuentaActual === 'login' ? '/api/login' : '/api/registro';
+
+    try {
+        const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+            errorBox.textContent = data.error || I18N[idiomaActual].cuentaErrorGenerico;
+            errorBox.classList.add('activo');
+            return false;
         }
-    });
+        usuarioActual = data.email;
+        cerrarCuenta();
+        pintarCuentaSwitch();
+        await cargarFavoritos();
+    } catch (err) {
+        console.error('Error en login/registro:', err);
+        errorBox.textContent = I18N[idiomaActual].cuentaErrorGenerico;
+        errorBox.classList.add('activo');
+    }
+    return false;
+}
+
+async function cerrarSesionUsuario() {
+    try {
+        await fetch('/api/logout', { method: 'POST' });
+    } catch (err) {
+        console.error('Error al cerrar sesión:', err);
+    }
+    usuarioActual = null;
+    pintarCuentaSwitch();
+    await cargarFavoritos();
+}
+
+// Pinta el botón de "Iniciar sesión", o el email + "Cerrar sesión" si ya
+// hay un usuario logueado.
+function pintarCuentaSwitch() {
+    const cont = document.getElementById('cuentaSwitch');
+    const t = I18N[idiomaActual];
+    if (usuarioActual) {
+        cont.innerHTML = `
+            <span class="cuenta-email" title="${escapeHtml(usuarioActual)}">${escapeHtml(usuarioActual)}</span>
+            <button type="button" class="btn-cuenta" onclick="cerrarSesionUsuario()">${escapeHtml(t.btnCerrarSesion)}</button>
+        `;
+    } else {
+        cont.innerHTML = `<button type="button" class="btn-cuenta" onclick="abrirCuenta('login')">${escapeHtml(t.btnIniciarSesion)}</button>`;
+    }
+}
+
+// Se llama al cargar la página: pregunta al backend si hay sesión activa
+// (la cookie ya lo dice, no hace falta guardar nada aparte) para no
+// obligar a volver a loguearse en cada visita.
+async function cargarEstadoSesion() {
+    try {
+        const resp = await fetch('/api/sesion');
+        const data = await resp.json();
+        usuarioActual = data.logueado ? data.email : null;
+    } catch (err) {
+        console.error('No se pudo comprobar la sesión:', err);
+        usuarioActual = null;
+    }
+    pintarCuentaSwitch();
+    await cargarFavoritos();
 }
 
 async function compartirVehiculo(btn) {
