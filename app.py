@@ -1576,11 +1576,12 @@ def scrape():
         # Gunicorn entraba en un bucle de SIGKILL.
         #
         # Solución: dos pools separados. Los "pesados" (Playwright) van con
-        # concurrencia limitada a 2 navegadores como máximo; los "ligeros"
-        # (requests) van con más concurrencia porque no cuestan memoria.
-        # Si tras desplegar esto SIGUE habiendo OOM, bajar heavy a 1 (vuelve
-        # a ser secuencial solo para los navegadores, pero los ligeros
-        # seguirían en paralelo). Si va sobrado, se puede subir a 3.
+        # concurrencia limitada a 1 navegador (ver Dockerfile: con
+        # --worker-class gthread ya solucionamos el health check sin sumar
+        # procesos, así que aquí priorizamos no volver a la memoria a
+        # ciegas). Los "ligeros" (requests) van con más concurrencia porque
+        # no cuestan memoria. Si tras desplegar esto va estable, se puede
+        # subir heavy a 2 con cuidado.
         tareas_pesadas = [
             ("Autokolecció", scrape_autokoleccio, dict(marca=marca, tipo=categoria)),
             ("Flexicar", scrape_flexicar, dict(marca=marca)),
@@ -1595,7 +1596,7 @@ def scrape():
             ("Mibec", scrape_mibec, dict(marca=marca, tipo=categoria)),
             ("AutoScout24", scrape_autoscout24, dict(marca=marca, tipo=categoria)),
         ]
-        with ThreadPoolExecutor(max_workers=2) as ejecutor_pesado, \
+        with ThreadPoolExecutor(max_workers=1) as ejecutor_pesado, \
              ThreadPoolExecutor(max_workers=5) as ejecutor_ligero:
             futuros = []
             futuros += [
