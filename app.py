@@ -1,5 +1,6 @@
 import os
 import html
+import time
 from flask import Flask, request, jsonify, send_file, make_response
 import requests
 from bs4 import BeautifulSoup
@@ -10,6 +11,32 @@ from playwright.async_api import async_playwright
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_PATH = os.path.join(BASE_DIR, 'templates', 'index.html')
+RUTA_LOG_DIAGNOSTICO = os.path.join(BASE_DIR, 'diagnostico_estabilidad.jsonl')
+
+def registrar_diagnostico(filtros, conteo_por_proveedor, urls_por_proveedor, tiempos_por_proveedor, total_filtrado):
+    """Guarda un registro de cada búsqueda (filtros usados, cuántos
+    resultados brutos ha traído cada proveedor, qué URLs exactas y
+    cuánto ha tardado) en un archivo .jsonl -- una línea por búsqueda.
+
+    Esto es SOLO para poder analizar después, comparando varias
+    ejecuciones con los mismos filtros, si la variabilidad viene de
+    verdad del scraping (proveedores que fallan o devuelven cosas
+    distintas) o de otra causa. No afecta nunca a la respuesta de la
+    API: si escribir el log falla, la búsqueda sigue funcionando igual."""
+    try:
+        registro = {
+            "timestamp": time.time(),
+            "fecha": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "filtros": filtros,
+            "total_filtrado": total_filtrado,
+            "conteo_por_proveedor": conteo_por_proveedor,
+            "tiempos_por_proveedor": tiempos_por_proveedor,
+            "urls_por_proveedor": urls_por_proveedor
+        }
+        with open(RUTA_LOG_DIAGNOSTICO, "a", encoding="utf-8") as f:
+            f.write(json.dumps(registro, ensure_ascii=False) + "\n")
+    except Exception as e:
+        print(f"[Diagnóstico] No se pudo escribir el log: {e}")
 if not os.path.exists(TEMPLATE_PATH):
     TEMPLATE_PATH = os.path.join(BASE_DIR, 'index.html')
 
@@ -325,7 +352,7 @@ def scrape_autokoleccio(marca="audi", tipo="todas", max_pages=2):
     return resultados
 
 # ================= 2. FLEXICAR (PLAYWRIGHT - VERSIÓN FIABLE) =================
-async def scrape_flexicar_async(marca="audi", tipo="todas", max_scrolls=4):
+async def scrape_flexicar_async(marca="audi", tipo="todas", max_scrolls=8):
     resultados = []
     marca_clean = marca.lower().strip()
     # URL real confirmada: https://www.flexicar.es/{marca}/segunda-mano/
@@ -363,10 +390,27 @@ async def scrape_flexicar_async(marca="audi", tipo="todas", max_scrolls=4):
 
             await page.wait_for_timeout(2500)
 
-            # Scroll progresivo para forzar la carga de tarjetas con lazy-load
+            # Scroll progresivo para forzar la carga de tarjetas con
+            # lazy-load. Adaptativo: en vez de un número fijo de scrolls
+            # con espera fija, sigue mientras la altura de la página siga
+            # creciendo (contenido nuevo cargando) y para en cuanto dos
+            # scrolls seguidos no cambian nada -- el diagnóstico detectó
+            # una ejecución con la mitad de resultados de lo normal,
+            # compatible con que esa vez la carga fuese más lenta y el
+            # número fijo de scrolls se quedara corto.
+            altura_anterior = 0
+            scrolls_sin_cambios = 0
             for _ in range(max_scrolls):
                 await page.evaluate("window.scrollBy(0, document.body.scrollHeight/4)")
-                await page.wait_for_timeout(900)
+                await page.wait_for_timeout(1000)
+                altura_actual = await page.evaluate("document.body.scrollHeight")
+                if altura_actual == altura_anterior:
+                    scrolls_sin_cambios += 1
+                    if scrolls_sin_cambios >= 2:
+                        break
+                else:
+                    scrolls_sin_cambios = 0
+                altura_anterior = altura_actual
 
             content = await page.content()
             await browser.close()
@@ -487,16 +531,33 @@ async def scrape_cochesnet_async(marca="audi"):
             page = await context.new_page()
 
             await page.route("**/*.{png,jpg,jpeg,svg,webp,woff,woff2,ttf}", lambda route: route.abort())
-            try:
-                await page.goto(url, wait_until="commit", timeout=12000)
-            except Exception:
-                pass
 
-            await page.wait_for_timeout(3500)
-            content = await page.content()
-            soup = BeautifulSoup(content, "html.parser")
-            
-            car_links = soup.find_all('a', href=lambda h: h and ('-covo.aspx' in h or ('.aspx' in h and marca_clean in h.lower())))
+            # Diagnóstico detectó ~40% de ejecuciones devolviendo 0 coches,
+            # con tiempos anómalamente largos en esos casos -- señal de que
+            # una sola pasada con espera fija no siempre da tiempo a que
+            # cargue el contenido real (bot-detection, red lenta puntual).
+            # Se reintenta una vez más, con una espera más larga, SOLO si
+            # la primera pasada no encuentra ningún enlace de coche -- no
+            # penaliza en tiempo al caso normal, que ya funciona a la primera.
+            car_links = []
+            esperas = [3500, 7000]
+            for intento, espera_ms in enumerate(esperas, start=1):
+                try:
+                    await page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                except Exception as e:
+                    print(f"[Coches.net] Intento {intento}: timeout/error de navegación ({e})")
+
+                await page.wait_for_timeout(espera_ms)
+                content = await page.content()
+                soup = BeautifulSoup(content, "html.parser")
+
+                car_links = soup.find_all('a', href=lambda h: h and ('-covo.aspx' in h or ('.aspx' in h and marca_clean in h.lower())))
+                if car_links:
+                    if intento > 1:
+                        print(f"[Coches.net] Recuperado en el intento {intento} ({len(car_links)} enlaces)")
+                    break
+                print(f"[Coches.net] Intento {intento}: 0 enlaces encontrados, {'reintentando' if intento < len(esperas) else 'sin más intentos'}")
+
             enlaces_vistos = set()
 
             for a in car_links:
@@ -1458,17 +1519,24 @@ def scrape():
 
     todos_los_resultados = []
     conteo_por_proveedor = {}
+    urls_por_proveedor = {}
+    tiempos_por_proveedor = {}
 
     def _ejecutar(nombre, funcion, **kwargs):
         """Llama a un scraper y anota cuántos resultados brutos ha traído,
-        sin alterar en nada su comportamiento. Esto es lo único que permite
-        luego avisar en el front si un proveedor concreto ha vuelto vacío."""
+        cuánto ha tardado y qué URLs concretas ha devuelto -- lo último es
+        lo que permite comparar después, entre ejecuciones idénticas, si
+        de verdad hay variabilidad y en qué proveedor concreto. No altera
+        en nada el comportamiento del scraper en sí."""
+        t0 = time.time()
         try:
             resultados_proveedor = funcion(**kwargs)
         except Exception as e:
             print(f"[{nombre}] Excepción no capturada por el propio scraper: {e}")
             resultados_proveedor = []
+        tiempos_por_proveedor[nombre] = round(time.time() - t0, 2)
         conteo_por_proveedor[nombre] = len(resultados_proveedor)
+        urls_por_proveedor[nombre] = [r.get("url") for r in resultados_proveedor]
         todos_los_resultados.extend(resultados_proveedor)
 
     if proveedor_raw == 'autokoleccio':
@@ -1554,7 +1622,23 @@ def scrape():
 
     print(f"TOTAL OBTENIDOS: {len(todos_los_resultados)} | ENVIADOS TRAS FILTROS: {len(resultados_filtrados)}")
     print(f"Desglose por proveedor: {conteo_por_proveedor}")
+    print(f"Tiempos por proveedor (s): {tiempos_por_proveedor}")
     print(f"========================================================\n")
+
+    registrar_diagnostico(
+        filtros={
+            "marca": marca, "categoria": categoria, "proveedor": proveedor_raw,
+            "anioMin": anio_min, "anioMax": anio_max,
+            "precioMin": precio_min, "precioMax": precio_max,
+            "potenciaMin": potencia_min, "potenciaMax": potencia_max,
+            "kmMin": km_min, "kmMax": km_max,
+            "combustible": combustible_filtro, "cambio": cambio_filtro
+        },
+        conteo_por_proveedor=conteo_por_proveedor,
+        urls_por_proveedor=urls_por_proveedor,
+        tiempos_por_proveedor=tiempos_por_proveedor,
+        total_filtrado=len(resultados_filtrados)
+    )
 
     return jsonify({
         "status": "success",
@@ -1562,6 +1646,24 @@ def scrape():
         "data": resultados_filtrados,
         "proveedores": conteo_por_proveedor
     })
+
+@app.route('/api/diagnostico', methods=['GET'])
+def descargar_diagnostico():
+    """Sirve el archivo diagnostico_estabilidad.jsonl para poder
+    descargarlo desde fuera (útil en Render, donde no hay acceso directo
+    al disco). Protegido con un token simple por query param para que no
+    quede expuesto a cualquiera que adivine la URL.
+
+    Uso: https://tu-app.onrender.com/api/diagnostico?token=TU_TOKEN
+    El token se define con la variable de entorno DIAGNOSTICO_TOKEN en
+    el panel de Render (Environment). Si no la defines, usa un valor por
+    defecto -- cámbialo antes de desplegar."""
+    token_esperado = os.environ.get('DIAGNOSTICO_TOKEN', 'cambia-este-token')
+    if request.args.get('token') != token_esperado:
+        return jsonify({"error": "no autorizado"}), 403
+    if not os.path.exists(RUTA_LOG_DIAGNOSTICO):
+        return jsonify({"error": "el log todavía no existe, lanza alguna búsqueda primero"}), 404
+    return send_file(RUTA_LOG_DIAGNOSTICO, as_attachment=True, download_name='diagnostico_estabilidad.jsonl')
 
 if __name__ == '__main__':
     print("Servidor listo en http://127.0.0.1:5000")
