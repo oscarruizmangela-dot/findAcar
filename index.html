@@ -434,9 +434,14 @@
         }
 
         /* La columna Modelo es la más variable en longitud: se acota y
-           envuelve en vez de forzar el resto de columnas fuera de vista */
+           envuelve en vez de forzar el resto de columnas fuera de vista.
+           340px (antes 240px) porque con textos largos tipo "Mercedes Benz
+           Clase A A 180 Hibrido No Enchufable Automatica Sant Boi 2" a
+           240px la celda se partía en demasiadas líneas y quedaba
+           absurdamente alta y estrecha en móvil. */
         td:nth-child(4) {
-            max-width: 240px;
+            min-width: 220px;
+            max-width: 340px;
             white-space: normal;
             word-break: break-word;
         }

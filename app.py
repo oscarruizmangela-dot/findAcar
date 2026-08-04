@@ -1,7 +1,7 @@
 import os
 import html
 import time
-from flask import Flask, request, jsonify, send_file, make_response
+from flask import Flask, request, jsonify, send_file, make_response, session
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -9,6 +9,10 @@ import re
 import asyncio
 from playwright.async_api import async_playwright
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import wraps
+import psycopg2
+import psycopg2.extras
+from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_PATH = os.path.join(BASE_DIR, 'templates', 'index.html')
@@ -42,6 +46,238 @@ if not os.path.exists(TEMPLATE_PATH):
     TEMPLATE_PATH = os.path.join(BASE_DIR, 'index.html')
 
 app = Flask(__name__)
+
+# La SECRET_KEY firma la cookie de sesión (quién está logueado). Si no se
+# define explícitamente por variable de entorno, se genera una aleatoria al
+# arrancar -- funciona, pero significa que TODAS las sesiones se invalidan
+# cada vez que el proceso se reinicia (cosa que en Render pasa a menudo:
+# redeploys, health checks, etc.). Para que el login sea persistente de
+# verdad entre reinicios, hay que fijar SECRET_KEY en el panel de Render
+# (Environment) con un valor propio y estable.
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(32).hex())
+
+
+# ---------------------------------------------------------------------------
+# Base de datos: usuarios registrados y sus favoritos guardados.
+#
+# Requiere una variable de entorno DATABASE_URL apuntando a una base de
+# datos Postgres (Render la genera automáticamente si creas una "Postgres"
+# desde el dashboard; luego hay que copiar su "Internal Database URL" y
+# pegarla como DATABASE_URL en las Environment Variables de este servicio).
+#
+# Sin DATABASE_URL configurada, el resto de la app (búsqueda de coches)
+# sigue funcionando igual que hasta ahora -- solo fallarán los endpoints
+# nuevos de registro/login/favoritos, con un error claro en vez de tumbar
+# todo el servicio.
+# ---------------------------------------------------------------------------
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+
+def obtener_conexion_db():
+    """Abre una conexión nueva a Postgres. Se abre y cierra por request
+    (no hay pool de conexiones): para el volumen de tráfico esperado aquí
+    es más que suficiente y evita complejidad extra. Si el tráfico crece
+    mucho, esto es lo primero a revisar (psycopg2.pool o similar)."""
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL no está configurada")
+    return psycopg2.connect(DATABASE_URL)
+
+
+def inicializar_tablas_db():
+    """Crea las tablas de usuarios/favoritos si no existen todavía.
+    Se llama una vez al arrancar la app. Si DATABASE_URL no está
+    configurada, no hace nada (y lo avisa por log) en vez de crashear
+    el arranque completo del servicio."""
+    if not DATABASE_URL:
+        print("[DB] DATABASE_URL no configurada -- registro/login/favoritos "
+              "server-side no estarán disponibles hasta que se configure.")
+        return
+    try:
+        conn = obtener_conexion_db()
+        with conn, conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS usuarios (
+                    id SERIAL PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    creado_en TIMESTAMP DEFAULT now()
+                );
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS favoritos (
+                    id SERIAL PRIMARY KEY,
+                    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+                    url TEXT NOT NULL,
+                    datos JSONB NOT NULL,
+                    creado_en TIMESTAMP DEFAULT now(),
+                    UNIQUE(usuario_id, url)
+                );
+            """)
+        conn.close()
+        print("[DB] Tablas usuarios/favoritos verificadas/creadas correctamente.")
+    except Exception as e:
+        print(f"[DB] No se pudieron crear las tablas: {e}")
+
+
+inicializar_tablas_db()
+
+
+def requiere_sesion(vista):
+    """Decorador para endpoints que requieren usuario logueado."""
+    @wraps(vista)
+    def envoltura(*args, **kwargs):
+        if not session.get('usuario_id'):
+            return jsonify({"error": "no has iniciado sesión"}), 401
+        return vista(*args, **kwargs)
+    return envoltura
+
+
+@app.route('/api/registro', methods=['POST'])
+def registro():
+    if not DATABASE_URL:
+        return jsonify({"error": "base de datos no configurada en el servidor"}), 503
+
+    data = request.json or {}
+    email = str(data.get('email', '')).strip().lower()
+    password = str(data.get('password', ''))
+
+    if not email or '@' not in email:
+        return jsonify({"error": "email no válido"}), 400
+    if len(password) < 8:
+        return jsonify({"error": "la contraseña debe tener al menos 8 caracteres"}), 400
+
+    password_hash = generate_password_hash(password)
+
+    try:
+        conn = obtener_conexion_db()
+        with conn, conn.cursor() as cur:
+            cur.execute("SELECT id FROM usuarios WHERE email = %s", (email,))
+            if cur.fetchone():
+                conn.close()
+                return jsonify({"error": "ya existe una cuenta con ese email"}), 409
+
+            cur.execute(
+                "INSERT INTO usuarios (email, password_hash) VALUES (%s, %s) RETURNING id",
+                (email, password_hash)
+            )
+            usuario_id = cur.fetchone()[0]
+        conn.close()
+    except Exception as e:
+        print(f"[Registro] Error: {e}")
+        return jsonify({"error": "error interno al registrar"}), 500
+
+    session['usuario_id'] = usuario_id
+    session['email'] = email
+    return jsonify({"status": "success", "email": email})
+
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    if not DATABASE_URL:
+        return jsonify({"error": "base de datos no configurada en el servidor"}), 503
+
+    data = request.json or {}
+    email = str(data.get('email', '')).strip().lower()
+    password = str(data.get('password', ''))
+
+    try:
+        conn = obtener_conexion_db()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, password_hash FROM usuarios WHERE email = %s", (email,))
+            fila = cur.fetchone()
+        conn.close()
+    except Exception as e:
+        print(f"[Login] Error: {e}")
+        return jsonify({"error": "error interno al iniciar sesión"}), 500
+
+    if not fila or not check_password_hash(fila[1], password):
+        return jsonify({"error": "email o contraseña incorrectos"}), 401
+
+    session['usuario_id'] = fila[0]
+    session['email'] = email
+    return jsonify({"status": "success", "email": email})
+
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({"status": "success"})
+
+
+@app.route('/api/sesion', methods=['GET'])
+def estado_sesion():
+    """Para que el frontend sepa, al cargar la página, si hay alguien
+    logueado (y con qué email) sin tener que guardar nada aparte por su
+    cuenta -- la cookie de sesión ya lo dice."""
+    if session.get('usuario_id'):
+        return jsonify({"logueado": True, "email": session.get('email')})
+    return jsonify({"logueado": False})
+
+
+@app.route('/api/favoritos', methods=['GET'])
+@requiere_sesion
+def listar_favoritos():
+    try:
+        conn = obtener_conexion_db()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT url, datos FROM favoritos WHERE usuario_id = %s ORDER BY creado_en DESC",
+                (session['usuario_id'],)
+            )
+            filas = cur.fetchall()
+        conn.close()
+    except Exception as e:
+        print(f"[Favoritos] Error al listar: {e}")
+        return jsonify({"error": "error interno"}), 500
+
+    return jsonify({"status": "success", "favoritos": [f["datos"] for f in filas]})
+
+
+@app.route('/api/favoritos', methods=['POST'])
+@requiere_sesion
+def guardar_favorito():
+    data = request.json or {}
+    item = data.get('item')
+    if not item or not item.get('url'):
+        return jsonify({"error": "falta el vehículo a guardar (item.url)"}), 400
+
+    try:
+        conn = obtener_conexion_db()
+        with conn, conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO favoritos (usuario_id, url, datos)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (usuario_id, url) DO NOTHING
+            """, (session['usuario_id'], item['url'], json.dumps(item, ensure_ascii=False)))
+        conn.close()
+    except Exception as e:
+        print(f"[Favoritos] Error al guardar: {e}")
+        return jsonify({"error": "error interno"}), 500
+
+    return jsonify({"status": "success"})
+
+
+@app.route('/api/favoritos', methods=['DELETE'])
+@requiere_sesion
+def quitar_favorito():
+    data = request.json or {}
+    url = data.get('url')
+    if not url:
+        return jsonify({"error": "falta la url del vehículo a quitar"}), 400
+
+    try:
+        conn = obtener_conexion_db()
+        with conn, conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM favoritos WHERE usuario_id = %s AND url = %s",
+                (session['usuario_id'], url)
+            )
+        conn.close()
+    except Exception as e:
+        print(f"[Favoritos] Error al quitar: {e}")
+        return jsonify({"error": "error interno"}), 500
+
+    return jsonify({"status": "success"})
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
