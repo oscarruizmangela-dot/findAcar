@@ -1,1 +1,1916 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Vehículos Multi-Fuente</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com/">
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #12181F;
+            --paper: #F6F5F1;
+            --panel: #FFFFFF;
+            --line: #E4E1D8;
+            --steel: #55636F;
+            --steel-soft: #8A94A0;
+            --signal: #C6491E;
+            --signal-soft: #F2DACE;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+        }
 
+        * { box-sizing: border-box; }
+
+        html { -webkit-text-size-adjust: 100%; }
+
+        body {
+            background-color: var(--paper);
+            margin: 0;
+            padding: 48px 32px 80px;
+            color: var(--ink);
+            font-family: var(--font-body);
+            line-height: 1.5;
+        }
+
+        .container { max-width: 1480px; margin: 0 auto; }
+
+        /* ============ CABECERA ============ */
+        .header-bar { margin-bottom: 36px; }
+
+        .eyebrow {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-mono);
+            font-size: 0.72em;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--signal);
+            margin-bottom: 14px;
+        }
+
+        .eyebrow::before {
+            content: "";
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--signal);
+        }
+
+        @media (prefers-reduced-motion: no-preference) {
+            .eyebrow::before { animation: pulse 2.4s ease-in-out infinite; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.45; transform: scale(0.75); }
+        }
+
+        h1 {
+            font-family: var(--font-display);
+            color: var(--ink);
+            margin: 0 0 8px;
+            font-size: 2.15em;
+            font-weight: 700;
+            letter-spacing: -0.015em;
+            line-height: 1.15;
+        }
+
+        .header-sub {
+            color: var(--steel);
+            font-size: 1em;
+            margin: 0 0 22px;
+            max-width: 560px;
+        }
+
+        /* Leyenda de fuentes: elemento firma, no decoración —
+           dice exactamente qué 4 portales consulta la herramienta */
+        .source-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .source-chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 100px;
+            padding: 6px 14px 6px 10px;
+            font-size: 0.82em;
+            font-weight: 500;
+            color: var(--steel);
+        }
+
+        .source-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .source-dot.c1 { background: #C6491E; }
+        .source-dot.c2 { background: #1C6E63; }
+        .source-dot.c3 { background: #2A5CAA; }
+        .source-dot.c4 { background: #8A5A2E; }
+        .source-dot.c5 { background: #6B4C9A; }
+        .source-dot.c6 { background: #2A7A4F; }
+        .source-dot.c7 { background: #B0223D; }
+        .source-dot.c8 { background: #6B4FA0; }
+        .source-dot.c9 { background: #B8860B; }
+        .source-dot.c10 { background: #1E5F74; }
+
+        /* ============ SELECTOR DE IDIOMA ============ */
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .lang-switch {
+            display: flex;
+            gap: 4px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 100px;
+            padding: 3px;
+            flex-shrink: 0;
+        }
+
+        .lang-btn {
+            border: none;
+            background: transparent;
+            padding: 5px 14px;
+            border-radius: 100px;
+            font-family: var(--font-mono);
+            font-size: 0.78em;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--steel);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .lang-btn:hover:not(.active) { color: var(--ink); }
+        .lang-btn.active { background: var(--ink); color: var(--paper); }
+
+        /* ============ TARJETA DE FILTROS ============ */
+        .filter-card {
+            background: var(--panel);
+            padding: 28px 28px 24px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            box-shadow: 0 1px 2px rgba(18, 24, 31, 0.04);
+            margin-bottom: 32px;
+        }
+
+        .grid-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 22px;
+            margin-bottom: 22px;
+        }
+
+        .form-group { display: flex; flex-direction: column; }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 9px;
+            font-size: 0.82em;
+            letter-spacing: 0.02em;
+            color: var(--ink);
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+
+        label span:last-child {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            color: var(--signal);
+            font-size: 0.95em;
+        }
+
+        select, input[type="text"] {
+            padding: 11px 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 0.95em;
+            font-family: var(--font-body);
+            background-color: var(--panel);
+            color: var(--ink);
+            transition: border-color 0.15s ease;
+        }
+
+        select:hover, input[type="text"]:hover { border-color: var(--steel-soft); }
+
+        /* ============ SELECTOR DE CATEGORÍA (SEGMENTADO) ============ */
+        .segmented-control {
+            display: flex;
+            flex-wrap: wrap;
+            background-color: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 3px;
+        }
+
+        .form-group.full-width { grid-column: 1 / -1; }
+
+        .segment-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 9px 10px;
+            border-radius: 6px;
+            font-family: var(--font-body);
+            font-size: 0.88em;
+            font-weight: 600;
+            color: var(--steel);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .segment-btn:hover:not(.active) { color: var(--ink); }
+        .segment-btn.active {
+            background-color: var(--panel);
+            color: var(--ink);
+            box-shadow: 0 1px 2px rgba(18, 24, 31, 0.08);
+        }
+
+        select:focus-visible, input:focus-visible, button:focus-visible, a:focus-visible {
+            outline: 2px solid var(--signal);
+            outline-offset: 2px;
+        }
+
+        /* ============ DOBLE SLIDER ============ */
+        .range-slider-container {
+            position: relative;
+            width: 100%;
+            height: 35px;
+            display: flex;
+            align-items: center;
+        }
+
+        .range-slider-container input[type="range"] {
+            position: absolute;
+            pointer-events: none;
+            -webkit-appearance: none;
+            appearance: none;
+            z-index: 2;
+            height: 0;
+            width: 100%;
+            margin: 0;
+            outline: none;
+            background: transparent;
+        }
+
+        .range-slider-container input[type="range"]::-webkit-slider-thumb {
+            pointer-events: all;
+            width: 17px;
+            height: 17px;
+            border-radius: 50%;
+            background: var(--panel);
+            border: 3px solid var(--signal);
+            cursor: pointer;
+            -webkit-appearance: none;
+            box-shadow: 0 1px 3px rgba(18, 24, 31, 0.25);
+        }
+
+        .range-slider-container input[type="range"]::-moz-range-thumb {
+            pointer-events: all;
+            width: 17px;
+            height: 17px;
+            border-radius: 50%;
+            background: var(--panel);
+            border: 3px solid var(--signal);
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(18, 24, 31, 0.25);
+        }
+
+        .slider-track {
+            position: absolute;
+            height: 4px;
+            border-radius: 3px;
+            background-color: var(--line);
+            width: 100%;
+            z-index: 1;
+        }
+
+        .slider-highlight {
+            position: absolute;
+            height: 4px;
+            border-radius: 3px;
+            background-color: var(--signal);
+            z-index: 1;
+        }
+
+        /* ============ BOTÓN ============ */
+        .btn-search {
+            background-color: var(--ink);
+            color: var(--paper);
+            border: none;
+            padding: 13px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+            font-size: 0.92em;
+            letter-spacing: 0.01em;
+        }
+
+        .btn-search:hover { background-color: var(--signal); }
+        .btn-search:active { transform: translateY(1px); }
+
+        .btn-export {
+            background-color: transparent;
+            color: var(--ink);
+            border: 1.5px solid var(--ink);
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: var(--font-body);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+            font-size: 0.85em;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-export:hover { background-color: var(--ink); color: var(--paper); }
+        .btn-export:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .btn-export:disabled:hover { background-color: transparent; color: var(--ink); }
+
+        /* ============ AVISOS DE PROVEEDOR ============ */
+        .provider-warnings {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+        .provider-warning {
+            background-color: #FCF3E9;
+            border: 1px solid #E8C9A0;
+            color: #7A4E1D;
+            border-radius: 8px;
+            padding: 9px 14px;
+            font-size: 0.87em;
+            letter-spacing: 0.01em;
+        }
+
+        /* ============ RESUMEN DE RESULTADOS ============ */
+        .results-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            padding: 0 2px;
+        }
+
+        .results-count {
+            font-size: 0.95em;
+            color: var(--steel);
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        .results-badge {
+            background-color: var(--ink);
+            color: var(--paper);
+            padding: 3px 11px;
+            border-radius: 100px;
+            font-size: 0.9em;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* ============ TABLA ============ */
+        .table-wrap {
+            background: var(--panel);
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(18, 24, 31, 0.04);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1080px;
+            border-collapse: collapse;
+            background: var(--panel);
+            table-layout: auto;
+        }
+
+        th, td { padding: 9px 10px; text-align: left; }
+
+        th {
+            background-color: var(--paper);
+            color: var(--steel);
+            font-family: var(--font-mono);
+            font-size: 0.64em;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--line);
+            white-space: nowrap;
+        }
+
+        tbody tr { border-bottom: 1px solid var(--line); }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background-color: var(--paper); }
+
+        td {
+            font-size: 0.85em;
+            color: var(--ink);
+        }
+
+        /* La columna Modelo es la más variable en longitud: se acota y
+           envuelve en vez de forzar el resto de columnas fuera de vista.
+           340px (antes 240px) porque con textos largos tipo "Mercedes Benz
+           Clase A A 180 Hibrido No Enchufable Automatica Sant Boi 2" a
+           240px la celda se partía en demasiadas líneas y quedaba
+           absurdamente alta y estrecha en móvil. */
+        td:nth-child(4) {
+            min-width: 220px;
+            max-width: 340px;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        /* Precios y año en mono con cifras tabulares, como un cuentakilómetros */
+        td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(10), td:nth-child(11) {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            font-size: 0.88em;
+        }
+
+        .badge {
+            background: var(--signal-soft);
+            color: var(--signal);
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.8em;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .car-link {
+            color: var(--ink);
+            font-weight: 600;
+            text-decoration: none;
+            border-bottom: 1px solid var(--line);
+            transition: border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .car-link:hover { color: var(--signal); border-color: var(--signal); }
+
+        /* ============ COMPARTIR VEHÍCULO ============ */
+        .share-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            color: var(--steel);
+            transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+        }
+        .share-btn:hover { border-color: var(--signal); color: var(--signal); }
+        .share-btn.share-btn-copied {
+            background: #DCEEDD;
+            border-color: #1C6E3F;
+            color: #1C6E3F;
+        }
+
+        /* ============ FAVORITOS ============ */
+        .results-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-favoritos {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: transparent;
+            border: 1.5px solid var(--ink);
+            color: var(--ink);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: var(--font-body);
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .btn-favoritos:hover { background: var(--ink); color: var(--paper); }
+
+        .acciones-cell { display: flex; gap: 6px; }
+
+        .fav-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            color: var(--steel);
+            transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+        }
+        .fav-btn:hover { border-color: #C79418; color: #C79418; }
+        .fav-btn.fav-btn-active {
+            background: #FFF6DC;
+            border-color: #C79418;
+            color: #C79418;
+        }
+
+        .favoritos-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(18, 24, 31, 0.55);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .favoritos-overlay.activo { display: flex; }
+
+        .favoritos-panel {
+            background: var(--paper);
+            border-radius: 12px;
+            max-width: 640px;
+            width: 100%;
+            max-height: 82vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 16px 48px rgba(18, 24, 31, 0.3);
+        }
+
+        .favoritos-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 22px;
+            border-bottom: 1px solid var(--line);
+            flex-shrink: 0;
+        }
+        .favoritos-header h3 { margin: 0; font-family: var(--font-display); font-size: 1.1em; }
+
+        .favoritos-cerrar {
+            background: transparent;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            color: var(--steel);
+            line-height: 1;
+            padding: 4px;
+        }
+        .favoritos-cerrar:hover { color: var(--ink); }
+
+        .favoritos-body {
+            padding: 8px 22px 18px;
+            overflow-y: auto;
+        }
+
+        .favorito-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--line);
+        }
+        .favorito-row:last-child { border-bottom: none; }
+
+        .favorito-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+        .favorito-proveedor {
+            font-size: 0.72em;
+            color: var(--steel);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-family: var(--font-mono);
+        }
+        .favorito-precio { font-weight: 700; font-family: var(--font-mono); }
+
+        .favorito-acciones { display: flex; gap: 6px; flex-shrink: 0; }
+
+        .fav-quitar-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--steel);
+            transition: border-color 0.15s ease, color 0.15s ease;
+        }
+        .fav-quitar-btn:hover { border-color: #B0223D; color: #B0223D; }
+
+        /* ============ CUENTA / LOGIN ============ */
+        .cuenta-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-cuenta {
+            background: transparent;
+            border: 1px solid var(--line);
+            color: var(--ink);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.78em;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-body);
+        }
+        .btn-cuenta:hover { border-color: var(--ink); }
+        .cuenta-email {
+            font-size: 0.78em;
+            color: var(--steel);
+            font-family: var(--font-mono);
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cuenta-panel { max-width: 380px; }
+
+        .cuenta-form { display: flex; flex-direction: column; gap: 12px; padding: 4px 22px 22px; }
+        .cuenta-form label { font-size: 0.82em; font-weight: 600; display: flex; flex-direction: column; gap: 5px; }
+        .cuenta-form input {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 9px 11px;
+            font-size: 0.95em;
+            font-family: var(--font-body);
+        }
+        .cuenta-form input:focus { outline: none; border-color: var(--signal); }
+
+        .cuenta-error {
+            display: none;
+            background: #FBE4E8;
+            color: #B0223D;
+            padding: 9px 11px;
+            border-radius: 8px;
+            font-size: 0.82em;
+        }
+        .cuenta-error.activo { display: block; }
+
+        .btn-cuenta-enviar {
+            background: var(--ink);
+            color: var(--paper);
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .btn-cuenta-enviar:hover { opacity: 0.9; }
+
+        .cuenta-toggle {
+            background: none;
+            border: none;
+            color: var(--steel);
+            font-size: 0.8em;
+            text-decoration: underline;
+            cursor: pointer;
+            padding: 0;
+            text-align: left;
+        }
+        .cuenta-toggle:hover { color: var(--ink); }
+
+        .favoritos-vacio {
+            color: var(--steel-soft);
+            text-align: center;
+            padding: 36px 10px;
+        }
+
+        /* ============ BADGE DE PUNTUACIÓN ============ */
+        .score-badge {
+            display: inline-block;
+            padding: 4px 11px;
+            border-radius: 100px;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 0.85em;
+            white-space: nowrap;
+        }
+        .score-alta { background: #DCEEE0; color: #1C6E63; }
+        .score-media { background: #FCEFD9; color: #8A5A2E; }
+        .score-baja { background: #F6DCDA; color: #B0223D; }
+        .score-nd { background: var(--paper); color: var(--steel-soft); border: 1px solid var(--line); }
+
+        /* ============ LOADER ============ */
+        .loader-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 44px 18px;
+            color: var(--steel);
+            font-size: 0.95em;
+        }
+
+        .loader-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid var(--line);
+            border-top-color: var(--signal);
+            border-radius: 50%;
+            flex-shrink: 0;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            .loader-spinner { animation: none; border-top-color: var(--steel-soft); }
+        }
+
+        /* ============ TOGGLE DE FILTROS ============ */
+        .filters-toggle-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .btn-toggle-filters {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-family: var(--font-body);
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--steel);
+            cursor: pointer;
+            transition: border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .btn-toggle-filters:hover { color: var(--ink); border-color: var(--steel-soft); }
+        .btn-toggle-filters #iconoToggleFiltros { font-family: var(--font-mono); }
+
+        /* ============ RESPONSIVE ============ */
+        @media (max-width: 640px) {
+            body { padding: 28px 16px 56px; }
+            h1 { font-size: 1.55em; }
+            .filter-card { padding: 20px 18px; }
+            th, td { padding: 12px; }
+        }
+    </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-bar">
+        <div class="header-top">
+            <p class="eyebrow" data-i18n="eyebrow">Buscador multi-fuente · 10 portales en vivo</p>
+            <div class="lang-switch">
+                <button type="button" class="lang-btn active" data-lang="es" onclick="cambiarIdioma(&#39;es&#39;)">ES</button>
+                <button type="button" class="lang-btn" data-lang="ca" onclick="cambiarIdioma(&#39;ca&#39;)">CA</button>
+            </div>
+            <div class="cuenta-switch" id="cuentaSwitch">
+                <button type="button" class="btn-cuenta" onclick="abrirCuenta('login')" data-i18n="btnIniciarSesion">Iniciar sesión</button>
+            </div>
+        </div>
+        <h1 data-i18n="h1">Buscador de Vehículos (KM0 / Segunda Mano)</h1>
+        <p class="header-sub" data-i18n="sub">Filtra por marca, año y precio y encuentra al instante lo que ofrecen los principales portales de coches de segunda mano y KM0 en España.</p>
+
+        <!-- Modal de login / registro -->
+        <div class="favoritos-overlay" id="cuentaOverlay" onclick="cerrarCuentaSiFondo(event)">
+            <div class="favoritos-panel cuenta-panel">
+                <div class="favoritos-header">
+                    <h3 id="cuentaTitulo" data-i18n="cuentaTituloLogin">Iniciar sesión</h3>
+                    <button class="favoritos-cerrar" onclick="cerrarCuenta()">✕</button>
+                </div>
+                <form class="cuenta-form" id="formCuenta" onsubmit="return enviarFormCuenta(event)">
+                    <div class="cuenta-error" id="cuentaError"></div>
+                    <label>
+                        <span data-i18n="cuentaEmail">Email</span>
+                        <input type="email" id="cuentaEmailInput" required autocomplete="email">
+                    </label>
+                    <label>
+                        <span data-i18n="cuentaPassword">Contraseña</span>
+                        <input type="password" id="cuentaPasswordInput" required minlength="8" autocomplete="current-password">
+                    </label>
+                    <button type="submit" class="btn-cuenta-enviar" id="cuentaBtnEnviar" data-i18n="btnIniciarSesion">Iniciar sesión</button>
+                    <button type="button" class="cuenta-toggle" id="cuentaToggleModo" onclick="alternarModoCuenta()" data-i18n="cuentaIrARegistro">¿No tienes cuenta? Regístrate</button>
+                </form>
+            </div>
+        </div>
+        <div class="source-legend">
+            <span class="source-chip"><span class="source-dot c1"></span>Flexicar</span>
+            <span class="source-chip"><span class="source-dot c2"></span>Autokolecció</span>
+            <span class="source-chip"><span class="source-dot c3"></span>Coches.net</span>
+            <span class="source-chip"><span class="source-dot c4"></span>Cochesinternet.net</span>
+            <span class="source-chip"><span class="source-dot c5"></span>Coches.com</span>
+            <span class="source-chip"><span class="source-dot c6"></span>OcasionPlus</span>
+            <span class="source-chip"><span class="source-dot c7"></span>Mibec</span>
+            <span class="source-chip"><span class="source-dot c8"></span>Clicars</span>
+            <span class="source-chip"><span class="source-dot c9"></span>Spoticar</span>
+            <span class="source-chip"><span class="source-dot c10"></span>AutoScout24</span>
+        </div>
+    </div>
+
+    <div class="filters-toggle-row">
+        <button class="btn-toggle-filters" id="btnToggleFiltros" onclick="toggleFiltros()">
+            <span id="iconoToggleFiltros">▾</span>
+            <span id="textoToggleFiltros" data-i18n="btnOcultarFiltros">Ocultar filtros</span>
+        </button>
+    </div>
+
+    <div class="filter-card" id="filterCard">
+        <div class="grid-filters">
+            <!-- Desplegable Marcas Extendido -->
+            <div class="form-group">
+                <label for="marcaSelect" data-i18n="labelMarca">Marca:</label>
+                <select id="marcaSelect">
+                    <option value="abarth">Abarth</option>
+                    <option value="alfa-romeo">Alfa Romeo</option>
+                    <option value="alpine">Alpine</option>
+                    <option value="aston-martin">Aston Martin</option>
+                    <option value="audi">Audi</option>
+                    <option value="bentley">Bentley</option>
+                    <option value="bmw">BMW</option>
+                    <option value="byd">BYD</option>
+                    <option value="citroen">Citroën</option>
+                    <option value="cupra">Cupra</option>
+                    <option value="dacia">Dacia</option>
+                    <option value="ds">DS Automobiles</option>
+                    <option value="ferrari">Ferrari</option>
+                    <option value="fiat">Fiat</option>
+                    <option value="ford">Ford</option>
+                    <option value="genesis">Genesis</option>
+                    <option value="honda">Honda</option>
+                    <option value="hyundai">Hyundai</option>
+                    <option value="jaecoo">Jaecoo</option>
+                    <option value="jaguar">Jaguar</option>
+                    <option value="jeep">Jeep</option>
+                    <option value="kgm">KGM (SsangYong)</option>
+                    <option value="kia">Kia</option>
+                    <option value="lancia">Lancia</option>
+                    <option value="land-rover">Land Rover</option>
+                    <option value="lexus">Lexus</option>
+                    <option value="maserati">Maserati</option>
+                    <option value="mazda">Mazda</option>
+                    <option value="mercedes-benz">Mercedes-Benz</option>
+                    <option value="mg">MG</option>
+                    <option value="mini">Mini</option>
+                    <option value="mitsubishi">Mitsubishi</option>
+                    <option value="nissan">Nissan</option>
+                    <option value="omoda">Omoda</option>
+                    <option value="opel">Opel</option>
+                    <option value="peugeot">Peugeot</option>
+                    <option value="polestar">Polestar</option>
+                    <option value="porsche">Porsche</option>
+                    <option value="renault">Renault</option>
+                    <option value="seat">SEAT</option>
+                    <option value="skoda">Skoda</option>
+                    <option value="smart">Smart</option>
+                    <option value="subaru">Subaru</option>
+                    <option value="suzuki">Suzuki</option>
+                    <option value="tesla">Tesla</option>
+                    <option value="toyota">Toyota</option>
+                    <option value="volkswagen">Volkswagen</option>
+                    <option value="volvo">Volvo</option>
+                </select>
+            </div>
+
+            <!-- Categoría -->
+            <div class="form-group">
+                <label data-i18n="labelCategoria">Categoría:</label>
+                <div class="segmented-control" id="categoriaControl" role="group">
+                    <button type="button" class="segment-btn active" data-valor="todas" data-i18n="catTodas" onclick="seleccionarCategoria(&#39;todas&#39;, this)">Todas</button>
+                    <button type="button" class="segment-btn" data-valor="coches-km0" onclick="seleccionarCategoria(&#39;coches-km0&#39;, this)">KM0</button>
+                    <button type="button" class="segment-btn" data-valor="segunda-mano" data-i18n="catOcasion" onclick="seleccionarCategoria(&#39;segunda-mano&#39;, this)">Ocasión</button>
+                </div>
+            </div>
+
+            <!-- Proveedor B2C -->
+            <div class="form-group">
+                <label for="proveedorSelect" data-i18n="labelProveedor">Proveedor B2C:</label>
+                <select id="proveedorSelect">
+                    <option value="todos" data-i18n="provTodos">Todos (10 Fuentes)</option>
+                    <option value="autokoleccio">Autokolecció</option>
+                    <option value="flexicar">Flexicar</option>
+                    <option value="cochesnet">Coches.net</option>
+                    <option value="cochesinternet">Cochesinternet.net</option>
+                    <option value="cochescom">Coches.com</option>
+                    <option value="ocasionplus">OcasionPlus</option>
+                    <option value="mibec">Mibec</option>
+                    <option value="clicars">Clicars</option>
+                    <option value="spoticar">Spoticar</option>
+                    <option value="autoscout24">AutoScout24</option>
+                </select>
+            </div>
+
+            <!-- Cambio -->
+            <div class="form-group">
+                <label data-i18n="labelCambio">Cambio:</label>
+                <div class="segmented-control" id="cambioControl" role="group">
+                    <button type="button" class="segment-btn active" data-valor="todos" data-i18n="cambioTodos" onclick="seleccionarCambio(&#39;todos&#39;, this)">Todos</button>
+                    <button type="button" class="segment-btn" data-valor="manual" data-i18n="cambioManual" onclick="seleccionarCambio(&#39;manual&#39;, this)">Manual</button>
+                    <button type="button" class="segment-btn" data-valor="automatico" data-i18n="cambioAutomatico" onclick="seleccionarCambio(&#39;automatico&#39;, this)">Automático</button>
+                </div>
+            </div>
+
+            <!-- Tecnología / Combustible -->
+            <div class="form-group full-width">
+                <label data-i18n="labelCombustible">Tecnología:</label>
+                <div class="segmented-control" id="combustibleControl" role="group">
+                    <button type="button" class="segment-btn active" data-valor="todas" data-i18n="combTodas" onclick="seleccionarCombustible(&#39;todas&#39;, this)">Todas</button>
+                    <button type="button" class="segment-btn" data-valor="diesel" data-i18n="combDiesel" onclick="seleccionarCombustible(&#39;diesel&#39;, this)">Diésel</button>
+                    <button type="button" class="segment-btn" data-valor="gasolina" data-i18n="combGasolina" onclick="seleccionarCombustible(&#39;gasolina&#39;, this)">Gasolina</button>
+                    <button type="button" class="segment-btn" data-valor="electrico" data-i18n="combElectrico" onclick="seleccionarCombustible(&#39;electrico&#39;, this)">Eléctrico</button>
+                    <button type="button" class="segment-btn" data-valor="hibrido-enchufable" data-i18n="combHibridoEnchufable" onclick="seleccionarCombustible(&#39;hibrido-enchufable&#39;, this)">Híbrido enchufable</button>
+                    <button type="button" class="segment-btn" data-valor="hibrido-no-enchufable" data-i18n="combHibridoNoEnchufable" onclick="seleccionarCombustible(&#39;hibrido-no-enchufable&#39;, this)">Híbrido no enchufable</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-filters">
+            <!-- Double Slider de Año (2021-2026 por defecto) -->
+            <div class="form-group">
+                <label>
+                    <span data-i18n="labelRangoAnio">Rango de Año:</span>
+                    <span id="anioValores">2021 - 2026</span>
+                </label>
+                <div class="range-slider-container">
+                    <div class="slider-track"></div>
+                    <div class="slider-highlight" id="anioHighlight" style="left: 68.75%; width: 31.25%;"></div>
+                    <input type="range" id="anioMin" min="2010" max="2026" value="2021" oninput="updateAnioSlider()">
+                    <input type="range" id="anioMax" min="2010" max="2026" value="2026" oninput="updateAnioSlider()">
+                </div>
+            </div>
+
+            <!-- Double Slider de Precio (0-100.000 € por defecto) -->
+            <div class="form-group">
+                <label>
+                    <span data-i18n="labelRangoPrecio">Rango de Precio (€):</span>
+                    <span id="precioValores">0 € - 100.000 €</span>
+                </label>
+                <div class="range-slider-container">
+                    <div class="slider-track"></div>
+                    <div class="slider-highlight" id="precioHighlight" style="left: 0%; width: 66.6667%;"></div>
+                    <input type="range" id="precioMin" min="0" max="150000" step="1000" value="0" oninput="updatePrecioSlider()">
+                    <input type="range" id="precioMax" min="0" max="150000" step="1000" value="100000" oninput="updatePrecioSlider()">
+                </div>
+            </div>
+
+            <!-- Double Slider de Potencia (0-500 CV por defecto) -->
+            <div class="form-group">
+                <label>
+                    <span data-i18n="labelRangoPotencia">Rango de Potencia (CV):</span>
+                    <span id="potenciaValores">0 - 500 CV</span>
+                </label>
+                <div class="range-slider-container">
+                    <div class="slider-track"></div>
+                    <div class="slider-highlight" id="potenciaHighlight" style="left: 0%; width: 100%;"></div>
+                    <input type="range" id="potenciaMin" min="0" max="500" step="10" value="0" oninput="updatePotenciaSlider()">
+                    <input type="range" id="potenciaMax" min="0" max="500" step="10" value="500" oninput="updatePotenciaSlider()">
+                </div>
+            </div>
+
+            <!-- Double Slider de Kilómetros (0-200.000 km por defecto) -->
+            <div class="form-group">
+                <label>
+                    <span data-i18n="labelRangoKm">Rango de Kilómetros:</span>
+                    <span id="kmValores">0 km - 200.000 km</span>
+                </label>
+                <div class="range-slider-container">
+                    <div class="slider-track"></div>
+                    <div class="slider-highlight" id="kmHighlight" style="left: 0%; width: 100%;"></div>
+                    <input type="range" id="kmMin" min="0" max="200000" step="5000" value="0" oninput="updateKmSlider()">
+                    <input type="range" id="kmMax" min="0" max="200000" step="5000" value="200000" oninput="updateKmSlider()">
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: right;">
+            <button class="btn-search" onclick="buscarCoches()" data-i18n="btnBuscar">Filtrar y Buscar</button>
+        </div>
+    </div>
+
+    <!-- Contador dinámico de resultados -->
+    <div class="results-summary">
+        <div class="results-count">
+            <span data-i18n="labelEncontrados">Vehículos encontrados:</span> <span class="results-badge" id="numCoches">0</span>
+        </div>
+        <div class="results-actions">
+            <button class="btn-favoritos" id="btnFavoritos" onclick="abrirFavoritos()">
+                ⭐ <span data-i18n="labelFavoritos">Favoritos</span> (<span id="contadorFavoritos">0</span>)
+            </button>
+            <button class="btn-export" id="btnExportar" onclick="exportarExcel()" data-i18n="btnExportar" disabled>⬇ Exportar a Excel</button>
+        </div>
+    </div>
+
+    <!-- Avisos si algún proveedor ha vuelto sin resultados mientras otros sí -->
+    <div class="provider-warnings" id="avisosProveedor" style="display: none;"></div>
+
+    <!-- Modal de vehículos favoritos -->
+    <div class="favoritos-overlay" id="favoritosOverlay" onclick="cerrarFavoritosSiFondo(event)">
+        <div class="favoritos-panel">
+            <div class="favoritos-header">
+                <h3 data-i18n="favoritosTitulo">Vehículos favoritos</h3>
+                <button class="favoritos-cerrar" onclick="cerrarFavoritos()">✕</button>
+            </div>
+            <div class="favoritos-body" id="favoritosBody"></div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th data-i18n="thProveedor">Proveedor</th>
+                    <th data-i18n="thCategoria">Categoría</th>
+                    <th data-i18n="thMarca">Marca</th>
+                    <th data-i18n="thModelo">Modelo</th>
+                    <th data-i18n="thAnio">Año</th>
+                    <th data-i18n="thKm">Km</th>
+                    <th data-i18n="thPotencia">Potencia</th>
+                    <th data-i18n="thCombustible">Combustible</th>
+                    <th data-i18n="thCambio">Cambio</th>
+                    <th data-i18n="thContado">Contado</th>
+                    <th data-i18n="thFinanciado">Financiado</th>
+                    <th data-i18n="thPuntuacion">Puntuación</th>
+                    <th data-i18n="thCompartir">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="tablaResultados">
+                <tr>
+                    <td colspan="13" style="text-align:center; color: #8A94A0; padding: 32px 18px;" data-i18n="msgInicial">Haz clic en "Filtrar y Buscar" para obtener resultados</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// Últimos resultados recibidos, guardados para poder exportarlos a Excel
+let ultimosResultados = [];
+
+// Textos de la interfaz en castellano y catalán. Los datos que llegan de
+// los proveedores (nombres de portal, marca, categoría, modelo...) NO pasan
+// por aquí -- se muestran tal cual los devuelve el backend, sin traducir.
+const I18N = {
+    es: {
+        title: "Buscador de Vehículos Multi-Fuente",
+        eyebrow: "Buscador multi-fuente · 10 portales en vivo",
+        h1: "Buscador de Vehículos (KM0 / Segunda Mano)",
+        sub: "Filtra por marca, año y precio y encuentra al instante lo que ofrecen los principales portales de coches de segunda mano y KM0 en España.",
+        labelMarca: "Marca:",
+        labelCategoria: "Categoría:",
+        catTodas: "Todas",
+        catOcasion: "Ocasión",
+        labelProveedor: "Proveedor B2C:",
+        provTodos: "Todos (10 Fuentes)",
+        labelCambio: "Cambio:",
+        cambioTodos: "Todos",
+        cambioManual: "Manual",
+        cambioAutomatico: "Automático",
+        labelCombustible: "Tecnología:",
+        combTodas: "Todas",
+        combDiesel: "Diésel",
+        combGasolina: "Gasolina",
+        combElectrico: "Eléctrico",
+        combHibridoEnchufable: "Híbrido enchufable",
+        combHibridoNoEnchufable: "Híbrido no enchufable",
+        labelRangoAnio: "Rango de Año:",
+        labelRangoPrecio: "Rango de Precio (€):",
+        labelRangoPotencia: "Rango de Potencia (CV):",
+        labelRangoKm: "Rango de Kilómetros:",
+        btnOcultarFiltros: "Ocultar filtros",
+        btnMostrarFiltros: "Mostrar filtros",
+        btnBuscar: "Filtrar y Buscar",
+        labelEncontrados: "Vehículos encontrados:",
+        btnExportar: "⬇ Exportar a Excel",
+        thProveedor: "Proveedor",
+        thCategoria: "Categoría",
+        thMarca: "Marca",
+        thModelo: "Modelo",
+        thAnio: "Año",
+        thKm: "Km",
+        thPotencia: "Potencia",
+        thCombustible: "Combustible",
+        thCambio: "Cambio",
+        thContado: "Contado",
+        thFinanciado: "Financiado",
+        thPuntuacion: "Puntuación",
+        thCompartir: "Acciones",
+        labelFavoritos: "Favoritos",
+        favoritosTitulo: "Vehículos favoritos",
+        favoritosVacio: "Aún no has guardado ningún vehículo favorito.",
+        btnGuardarFavorito: "Guardar en favoritos",
+        btnQuitarFavorito: "Quitar de favoritos",
+        btnCompartirTitulo: "Compartir este anuncio",
+        msgCopiarManual: "Copia el enlace:",
+        btnIniciarSesion: "Iniciar sesión",
+        btnCerrarSesion: "Cerrar sesión",
+        cuentaTituloLogin: "Iniciar sesión",
+        cuentaTituloRegistro: "Crear cuenta",
+        cuentaEmail: "Email",
+        cuentaPassword: "Contraseña",
+        cuentaIrARegistro: "¿No tienes cuenta? Regístrate",
+        cuentaIrALogin: "¿Ya tienes cuenta? Inicia sesión",
+        cuentaErrorGenerico: "Ha ocurrido un error. Inténtalo de nuevo.",
+        msgInicial: 'Haz clic en "Filtrar y Buscar" para obtener resultados',
+        msgCargando: "Cargando vehículos desde las fuentes seleccionadas...",
+        msgSinResultados: "No se encontraron vehículos para los filtros aplicados.",
+        msgError: "Error conectando con el servidor.",
+        msgAviso: (n) => `⚠ ${n} no ha devuelto resultados esta vez — puede que su web haya cambiado o esté dando problemas puntuales.`
+    },
+    ca: {
+        title: "Cercador de Vehicles Multi-Font",
+        eyebrow: "Cercador multi-font · 10 portals en viu",
+        h1: "Cercador de Vehicles (KM0 / Segona Mà)",
+        sub: "Filtra per marca, any i preu i troba a l'instant el que ofereixen els principals portals de cotxes de segona mà i KM0 a Espanya.",
+        labelMarca: "Marca:",
+        labelCategoria: "Categoria:",
+        catTodas: "Totes",
+        catOcasion: "Ocasió",
+        labelProveedor: "Proveïdor B2C:",
+        provTodos: "Tots (10 Fonts)",
+        labelCambio: "Canvi:",
+        cambioTodos: "Tots",
+        cambioManual: "Manual",
+        cambioAutomatico: "Automàtic",
+        labelCombustible: "Tecnologia:",
+        combTodas: "Totes",
+        combDiesel: "Dièsel",
+        combGasolina: "Gasolina",
+        combElectrico: "Elèctric",
+        combHibridoEnchufable: "Híbrid endollable",
+        combHibridoNoEnchufable: "Híbrid no endollable",
+        labelRangoAnio: "Rang d'Any:",
+        labelRangoPrecio: "Rang de Preu (€):",
+        labelRangoPotencia: "Rang de Potència (CV):",
+        labelRangoKm: "Rang de Quilòmetres:",
+        btnOcultarFiltros: "Amaga els filtres",
+        btnMostrarFiltros: "Mostra els filtres",
+        btnBuscar: "Filtra i Cerca",
+        labelEncontrados: "Vehicles trobats:",
+        btnExportar: "⬇ Exporta a Excel",
+        thProveedor: "Proveïdor",
+        thCategoria: "Categoria",
+        thMarca: "Marca",
+        thModelo: "Model",
+        thAnio: "Any",
+        thKm: "Km",
+        thPotencia: "Potència",
+        thCombustible: "Combustible",
+        thCambio: "Canvi",
+        thContado: "Comptat",
+        thFinanciado: "Finançat",
+        thPuntuacion: "Puntuació",
+        thCompartir: "Accions",
+        labelFavoritos: "Preferits",
+        favoritosTitulo: "Vehicles preferits",
+        favoritosVacio: "Encara no has guardat cap vehicle preferit.",
+        btnGuardarFavorito: "Desa als preferits",
+        btnQuitarFavorito: "Treu dels preferits",
+        btnCompartirTitulo: "Comparteix aquest anunci",
+        msgCopiarManual: "Copia l'enllaç:",
+        btnIniciarSesion: "Inicia sessió",
+        btnCerrarSesion: "Tanca sessió",
+        cuentaTituloLogin: "Inicia sessió",
+        cuentaTituloRegistro: "Crea un compte",
+        cuentaEmail: "Email",
+        cuentaPassword: "Contrasenya",
+        cuentaIrARegistro: "No tens compte? Registra't",
+        cuentaIrALogin: "Ja tens compte? Inicia sessió",
+        cuentaErrorGenerico: "S'ha produït un error. Torna-ho a provar.",
+        msgInicial: 'Fes clic a "Filtra i Cerca" per obtenir resultats',
+        msgCargando: "Carregant vehicles des de les fonts seleccionades...",
+        msgSinResultados: "No s'ha trobat cap vehicle amb els filtres aplicats.",
+        msgError: "Error connectant amb el servidor.",
+        msgAviso: (n) => `⚠ ${n} no ha retornat resultats aquesta vegada — potser el seu lloc web ha canviat o té problemes puntuals.`
+    }
+};
+
+let idiomaActual = localStorage.getItem('idiomaBuscador') || 'es';
+
+function aplicarTraducciones() {
+    const t = I18N[idiomaActual];
+    document.documentElement.lang = idiomaActual;
+    document.title = t.title;
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const clave = el.getAttribute('data-i18n');
+        if (t[clave] !== undefined) el.textContent = t[clave];
+    });
+
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === idiomaActual);
+    });
+}
+
+function cambiarIdioma(lang) {
+    idiomaActual = lang;
+    localStorage.setItem('idiomaBuscador', lang);
+    aplicarTraducciones();
+    pintarCuentaSwitch();
+    if (document.getElementById('cuentaOverlay').classList.contains('activo')) {
+        aplicarModoCuenta();
+    }
+}
+
+// Categoría seleccionada mediante el control segmentado (ya no es un <select>)
+let categoriaSeleccionada = 'todas';
+function seleccionarCategoria(valor, btn) {
+    categoriaSeleccionada = valor;
+    document.querySelectorAll('#categoriaControl .segment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+// Tipo de cambio y tecnología/combustible, mismo patrón que categoría
+let cambioSeleccionado = 'todos';
+function seleccionarCambio(valor, btn) {
+    cambioSeleccionado = valor;
+    document.querySelectorAll('#cambioControl .segment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+let combustibleSeleccionado = 'todas';
+function seleccionarCombustible(valor, btn) {
+    combustibleSeleccionado = valor;
+    document.querySelectorAll('#combustibleControl .segment-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+// Ajuste interactivo de los sliders de Rango de Año
+function updateAnioSlider() {
+    let minInput = document.getElementById('anioMin');
+    let maxInput = document.getElementById('anioMax');
+    let minVal = parseInt(minInput.value);
+    let maxVal = parseInt(maxInput.value);
+
+    if (minVal > maxVal) {
+        let tmp = minVal;
+        minInput.value = maxVal;
+        maxInput.value = tmp;
+        minVal = maxVal;
+        maxVal = tmp;
+    }
+
+    document.getElementById('anioValores').textContent = `${minVal} - ${maxVal}`;
+    
+    let percentMin = ((minVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    let percentMax = ((maxVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    
+    let highlight = document.getElementById('anioHighlight');
+    highlight.style.left = percentMin + '%';
+    highlight.style.width = (percentMax - percentMin) + '%';
+}
+
+// Ajuste interactivo de los sliders de Rango de Precio
+function updatePrecioSlider() {
+    let minInput = document.getElementById('precioMin');
+    let maxInput = document.getElementById('precioMax');
+    let minVal = parseInt(minInput.value);
+    let maxVal = parseInt(maxInput.value);
+
+    if (minVal > maxVal) {
+        let tmp = minVal;
+        minInput.value = maxVal;
+        maxInput.value = tmp;
+        minVal = maxVal;
+        maxVal = tmp;
+    }
+
+    let minFmt = minVal.toLocaleString('es-ES') + ' €';
+    let maxFmt = maxVal.toLocaleString('es-ES') + ' €';
+    document.getElementById('precioValores').textContent = `${minFmt} - ${maxFmt}`;
+
+    let percentMin = ((minVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    let percentMax = ((maxVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+
+    let highlight = document.getElementById('precioHighlight');
+    highlight.style.left = percentMin + '%';
+    highlight.style.width = (percentMax - percentMin) + '%';
+}
+
+// Ajuste interactivo del slider de Rango de Potencia (mismo patrón que el de precio)
+function updatePotenciaSlider() {
+    let minInput = document.getElementById('potenciaMin');
+    let maxInput = document.getElementById('potenciaMax');
+    let minVal = parseInt(minInput.value);
+    let maxVal = parseInt(maxInput.value);
+
+    if (minVal > maxVal) {
+        let tmp = minVal;
+        minInput.value = maxVal;
+        maxInput.value = tmp;
+        minVal = maxVal;
+        maxVal = tmp;
+    }
+
+    document.getElementById('potenciaValores').textContent = `${minVal} - ${maxVal} CV`;
+
+    let percentMin = ((minVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    let percentMax = ((maxVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+
+    let highlight = document.getElementById('potenciaHighlight');
+    highlight.style.left = percentMin + '%';
+    highlight.style.width = (percentMax - percentMin) + '%';
+}
+
+// Ajuste interactivo del slider de Rango de Kilómetros (mismo patrón)
+function updateKmSlider() {
+    let minInput = document.getElementById('kmMin');
+    let maxInput = document.getElementById('kmMax');
+    let minVal = parseInt(minInput.value);
+    let maxVal = parseInt(maxInput.value);
+
+    if (minVal > maxVal) {
+        let tmp = minVal;
+        minInput.value = maxVal;
+        maxInput.value = tmp;
+        minVal = maxVal;
+        maxVal = tmp;
+    }
+
+    let minFmt = minVal.toLocaleString('es-ES') + ' km';
+    let maxFmt = maxVal.toLocaleString('es-ES') + ' km';
+    document.getElementById('kmValores').textContent = `${minFmt} - ${maxFmt}`;
+
+    let percentMin = ((minVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+    let percentMax = ((maxVal - minInput.min) / (minInput.max - minInput.min)) * 100;
+
+    let highlight = document.getElementById('kmHighlight');
+    highlight.style.left = percentMin + '%';
+    highlight.style.width = (percentMax - percentMin) + '%';
+}
+
+// Inicializar posiciones de los sliders e idioma al cargar
+window.onload = function() {
+    updateAnioSlider();
+    updatePrecioSlider();
+    updatePotenciaSlider();
+    updateKmSlider();
+    aplicarTraducciones();
+    cargarEstadoSesion();
+};
+
+// Muestra/oculta la zona de filtros para poder trabajar con más espacio
+// sobre la tabla de resultados, sin perder los valores ya seleccionados
+// (los inputs siguen ahí, solo se ocultan visualmente).
+let filtrosVisibles = true;
+function toggleFiltros() {
+    filtrosVisibles = !filtrosVisibles;
+    const card = document.getElementById('filterCard');
+    const icono = document.getElementById('iconoToggleFiltros');
+    const texto = document.getElementById('textoToggleFiltros');
+
+    card.style.display = filtrosVisibles ? '' : 'none';
+    icono.textContent = filtrosVisibles ? '▾' : '▸';
+    texto.textContent = I18N[idiomaActual][filtrosVisibles ? 'btnOcultarFiltros' : 'btnMostrarFiltros'];
+}
+
+// Pinta la puntuación (0-100 o null) como una pastilla de color:
+// verde = buen conjunto año/potencia/km/precio, ámbar = intermedio,
+// rojo = flojo, gris = sin datos suficientes para puntuar.
+// Los "ganadores" (verde) llevan además un 🏆 para que salten a la vista
+// al recorrer la tabla, tal como se pidió.
+function renderPuntuacion(puntuacion) {
+    if (puntuacion === null || puntuacion === undefined) {
+        return `<span class="score-badge score-nd">N/D</span>`;
+    }
+    let clase = 'score-baja';
+    let emoji = '';
+    if (puntuacion >= 75) { clase = 'score-alta'; emoji = ' 🏆'; }
+    else if (puntuacion >= 50) { clase = 'score-media'; }
+    return `<span class="score-badge ${clase}">${puntuacion}${emoji}</span>`;
+}
+
+// Escapa texto para poder insertarlo con seguridad dentro de un atributo
+// HTML (data-url/data-modelo) construido con template literals -- evita
+// que un modelo con comillas o '&' rompa el marcado.
+function escapeHtml(texto) {
+    if (texto === null || texto === undefined) return '';
+    return String(texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Comparte el enlace de un vehículo concreto: usa el selector nativo de
+// compartir del dispositivo si existe (típico en móvil), y si no,
+// copia el enlace al portapapeles con una confirmación visual breve.
+// ============ FAVORITOS ============
+// Los favoritos viven en memoria (favoritosCache) mientras dura la visita,
+// y se persisten en uno de dos sitios según si hay sesión iniciada:
+//   - localStorage del navegador, si NO hay usuario logueado (como
+//     siempre: favoritos ligados a ese dispositivo/navegador concreto).
+//   - el backend (tabla `favoritos`), si hay sesión -> los favoritos
+//     viajan con la cuenta, se ven desde cualquier dispositivo.
+// El cambio de una fuente a otra pasa automáticamente al iniciar/cerrar
+// sesión (ver cargarFavoritos, llamada desde cargarEstadoSesion).
+const CLAVE_FAVORITOS = 'buscadorVehiculosFavoritos';
+let favoritosCache = [];
+
+function leerFavoritosLocalStorage() {
+    try {
+        const raw = localStorage.getItem(CLAVE_FAVORITOS);
+        return raw ? JSON.parse(raw) : [];
+    } catch (err) {
+        return [];
+    }
+}
+
+function guardarFavoritosLocalStorage(lista) {
+    try {
+        localStorage.setItem(CLAVE_FAVORITOS, JSON.stringify(lista));
+    } catch (err) {
+        console.error('No se pudo guardar en favoritos:', err);
+    }
+}
+
+// Trae los favoritos de la fuente que corresponda (servidor o
+// localStorage) y refresca toda la UI que depende de ellos. Se llama al
+// cargar la página y justo después de iniciar/cerrar sesión.
+async function cargarFavoritos() {
+    if (usuarioActual) {
+        try {
+            const resp = await fetch('/api/favoritos');
+            const data = await resp.json();
+            favoritosCache = (data && data.favoritos) ? data.favoritos : [];
+        } catch (err) {
+            console.error('No se pudieron cargar los favoritos del servidor:', err);
+            favoritosCache = [];
+        }
+    } else {
+        favoritosCache = leerFavoritosLocalStorage();
+    }
+    actualizarContadorFavoritos();
+    refrescarEstrellasFavoritos();
+    if (document.getElementById('favoritosOverlay').classList.contains('activo')) {
+        renderFavoritos();
+    }
+}
+
+function esFavorito(url) {
+    return favoritosCache.some(f => f.url === url);
+}
+
+function actualizarContadorFavoritos() {
+    const contador = document.getElementById('contadorFavoritos');
+    if (contador) contador.textContent = favoritosCache.length;
+}
+
+// Repinta el estado (★/☆) de todas las estrellas de un vehículo concreto
+// que estén visibles en la grid principal.
+function pintarEstadoFavoritoPorUrl(url, activo) {
+    document.querySelectorAll('.fav-btn').forEach(b => {
+        if (b.dataset.url === url) {
+            b.textContent = activo ? '★' : '☆';
+            b.classList.toggle('fav-btn-active', activo);
+            b.title = activo ? I18N[idiomaActual].btnQuitarFavorito : I18N[idiomaActual].btnGuardarFavorito;
+        }
+    });
+}
+
+// Igual que lo anterior pero para TODAS las estrellas visibles a la vez
+// -- hace falta tras cargar favoritos de forma asíncrona (por ejemplo,
+// justo después de iniciar sesión), cuando la grid ya estaba pintada
+// antes de saber qué vehículos son favoritos de esa cuenta.
+function refrescarEstrellasFavoritos() {
+    document.querySelectorAll('.fav-btn').forEach(b => {
+        const activo = esFavorito(b.dataset.url);
+        b.textContent = activo ? '★' : '☆';
+        b.classList.toggle('fav-btn-active', activo);
+        b.title = activo ? I18N[idiomaActual].btnQuitarFavorito : I18N[idiomaActual].btnGuardarFavorito;
+    });
+}
+
+// Construye el botón de estrella para una fila de la grid, con el
+// icono/clase correctos según si ese vehículo ya está en favoritos.
+function renderFavBtn(item) {
+    const activo = esFavorito(item.url);
+    const clase = activo ? 'fav-btn fav-btn-active' : 'fav-btn';
+    const icono = activo ? '★' : '☆';
+    const titulo = activo ? I18N[idiomaActual].btnQuitarFavorito : I18N[idiomaActual].btnGuardarFavorito;
+    return `<button type="button" class="${clase}" data-url="${escapeHtml(item.url)}" onclick="toggleFavoritoDesdeBoton(this)" title="${titulo}">${icono}</button>`;
+}
+
+// Se llama desde la grid principal: busca el vehículo completo en los
+// últimos resultados (por URL) para poder guardar toda su información.
+function toggleFavoritoDesdeBoton(btn) {
+    const url = btn.dataset.url;
+    const item = ultimosResultados.find(r => r.url === url);
+    if (!item) return;
+    toggleFavorito(item);
+}
+
+// Actualiza la UI al instante (optimista) y persiste el cambio detrás:
+// en el servidor si hay sesión, en localStorage si no. Si el guardado en
+// el servidor falla (red caída, sesión caducada...), se deshace el
+// cambio local y se avisa por consola en vez de dejar la UI desincronizada
+// con lo que realmente hay guardado.
+async function toggleFavorito(item) {
+    const idx = favoritosCache.findIndex(f => f.url === item.url);
+    const yaEra = idx >= 0;
+
+    if (yaEra) {
+        favoritosCache.splice(idx, 1);
+    } else {
+        favoritosCache.push(item);
+    }
+    pintarEstadoFavoritoPorUrl(item.url, !yaEra);
+    actualizarContadorFavoritos();
+    if (document.getElementById('favoritosOverlay').classList.contains('activo')) {
+        renderFavoritos();
+    }
+
+    try {
+        if (usuarioActual) {
+            const resp = await fetch('/api/favoritos', {
+                method: yaEra ? 'DELETE' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(yaEra ? { url: item.url } : { item })
+            });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        } else {
+            guardarFavoritosLocalStorage(favoritosCache);
+        }
+    } catch (err) {
+        console.error('No se pudo guardar el cambio en favoritos, deshaciendo:', err);
+        if (yaEra) {
+            favoritosCache.splice(idx, 0, item);
+        } else {
+            favoritosCache = favoritosCache.filter(f => f.url !== item.url);
+        }
+        pintarEstadoFavoritoPorUrl(item.url, yaEra);
+        actualizarContadorFavoritos();
+        if (document.getElementById('favoritosOverlay').classList.contains('activo')) {
+            renderFavoritos();
+        }
+    }
+}
+
+function abrirFavoritos() {
+    renderFavoritos();
+    document.getElementById('favoritosOverlay').classList.add('activo');
+}
+
+function cerrarFavoritos() {
+    document.getElementById('favoritosOverlay').classList.remove('activo');
+}
+
+function cerrarFavoritosSiFondo(event) {
+    if (event.target.id === 'favoritosOverlay') cerrarFavoritos();
+}
+
+// Pinta la lista de favoritos dentro del modal, con botón de compartir
+// y botón de quitar (desmarcar) en cada fila.
+function renderFavoritos() {
+    const body = document.getElementById('favoritosBody');
+    const favoritos = favoritosCache;
+
+    if (favoritos.length === 0) {
+        body.innerHTML = `<p class="favoritos-vacio">${I18N[idiomaActual].favoritosVacio}</p>`;
+        return;
+    }
+
+    body.innerHTML = favoritos.map(item => `
+        <div class="favorito-row">
+            <div class="favorito-info">
+                <span class="favorito-proveedor">${escapeHtml(item.proveedor)}</span>
+                <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="car-link">${escapeHtml(item.marca + ' ' + item.modelo)} ↗</a>
+                <span class="favorito-precio">${item.contado}</span>
+            </div>
+            <div class="favorito-acciones">
+                <button type="button" class="share-btn" data-url="${escapeHtml(item.url)}" data-modelo="${escapeHtml(item.marca + ' ' + item.modelo)}" onclick="compartirVehiculo(this)" title="${I18N[idiomaActual].btnCompartirTitulo}">🔗</button>
+                <button type="button" class="fav-quitar-btn" data-url="${escapeHtml(item.url)}" onclick="quitarFavoritoDesdeModal(this)" title="${I18N[idiomaActual].btnQuitarFavorito}">✕</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Desmarca un vehículo desde el propio visor de favoritos. toggleFavorito
+// ya se encarga de persistir el cambio (servidor o localStorage) y de
+// mantener la estrella de la grid principal en sync, si está visible.
+function quitarFavoritoDesdeModal(btn) {
+    const url = btn.dataset.url;
+    const item = favoritosCache.find(f => f.url === url);
+    if (!item) return;
+    toggleFavorito(item);
+}
+
+// ============ CUENTA (LOGIN / REGISTRO) ============
+// usuarioActual: null si no hay sesión (modo invitado, favoritos en
+// localStorage); email en texto si hay sesión (favoritos en servidor).
+let usuarioActual = null;
+let modoCuentaActual = 'login'; // 'login' | 'registro'
+
+function abrirCuenta(modo) {
+    modoCuentaActual = modo || 'login';
+    aplicarModoCuenta();
+    document.getElementById('cuentaError').classList.remove('activo');
+    document.getElementById('formCuenta').reset();
+    document.getElementById('cuentaOverlay').classList.add('activo');
+}
+
+function cerrarCuenta() {
+    document.getElementById('cuentaOverlay').classList.remove('activo');
+}
+
+function cerrarCuentaSiFondo(event) {
+    if (event.target.id === 'cuentaOverlay') cerrarCuenta();
+}
+
+function alternarModoCuenta() {
+    modoCuentaActual = modoCuentaActual === 'login' ? 'registro' : 'login';
+    aplicarModoCuenta();
+}
+
+function aplicarModoCuenta() {
+    const t = I18N[idiomaActual];
+    const esLogin = modoCuentaActual === 'login';
+    document.getElementById('cuentaTitulo').textContent = esLogin ? t.cuentaTituloLogin : t.cuentaTituloRegistro;
+    document.getElementById('cuentaBtnEnviar').textContent = esLogin ? t.btnIniciarSesion : t.cuentaTituloRegistro;
+    document.getElementById('cuentaToggleModo').textContent = esLogin ? t.cuentaIrARegistro : t.cuentaIrALogin;
+    document.getElementById('cuentaPasswordInput').setAttribute('autocomplete', esLogin ? 'current-password' : 'new-password');
+}
+
+async function enviarFormCuenta(event) {
+    event.preventDefault();
+    const email = document.getElementById('cuentaEmailInput').value.trim();
+    const password = document.getElementById('cuentaPasswordInput').value;
+    const errorBox = document.getElementById('cuentaError');
+    errorBox.classList.remove('activo');
+
+    const endpoint = modoCuentaActual === 'login' ? '/api/login' : '/api/registro';
+
+    try {
+        const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+            errorBox.textContent = data.error || I18N[idiomaActual].cuentaErrorGenerico;
+            errorBox.classList.add('activo');
+            return false;
+        }
+        usuarioActual = data.email;
+        cerrarCuenta();
+        pintarCuentaSwitch();
+        await cargarFavoritos();
+    } catch (err) {
+        console.error('Error en login/registro:', err);
+        errorBox.textContent = I18N[idiomaActual].cuentaErrorGenerico;
+        errorBox.classList.add('activo');
+    }
+    return false;
+}
+
+async function cerrarSesionUsuario() {
+    try {
+        await fetch('/api/logout', { method: 'POST' });
+    } catch (err) {
+        console.error('Error al cerrar sesión:', err);
+    }
+    usuarioActual = null;
+    pintarCuentaSwitch();
+    await cargarFavoritos();
+}
+
+// Pinta el botón de "Iniciar sesión", o el email + "Cerrar sesión" si ya
+// hay un usuario logueado.
+function pintarCuentaSwitch() {
+    const cont = document.getElementById('cuentaSwitch');
+    const t = I18N[idiomaActual];
+    if (usuarioActual) {
+        cont.innerHTML = `
+            <span class="cuenta-email" title="${escapeHtml(usuarioActual)}">${escapeHtml(usuarioActual)}</span>
+            <button type="button" class="btn-cuenta" onclick="cerrarSesionUsuario()">${escapeHtml(t.btnCerrarSesion)}</button>
+        `;
+    } else {
+        cont.innerHTML = `<button type="button" class="btn-cuenta" onclick="abrirCuenta('login')">${escapeHtml(t.btnIniciarSesion)}</button>`;
+    }
+}
+
+// Se llama al cargar la página: pregunta al backend si hay sesión activa
+// (la cookie ya lo dice, no hace falta guardar nada aparte) para no
+// obligar a volver a loguearse en cada visita.
+async function cargarEstadoSesion() {
+    try {
+        const resp = await fetch('/api/sesion');
+        const data = await resp.json();
+        usuarioActual = data.logueado ? data.email : null;
+    } catch (err) {
+        console.error('No se pudo comprobar la sesión:', err);
+        usuarioActual = null;
+    }
+    pintarCuentaSwitch();
+    await cargarFavoritos();
+}
+
+async function compartirVehiculo(btn) {
+    const url = btn.dataset.url;
+    const modelo = btn.dataset.modelo;
+
+    if (navigator.share) {
+        try {
+            await navigator.share({ title: modelo, text: modelo, url: url });
+            return;
+        } catch (err) {
+            // El usuario cerró el selector nativo sin elegir nada: no hacemos nada más
+            if (err && err.name === 'AbortError') return;
+        }
+    }
+
+    try {
+        await navigator.clipboard.writeText(url);
+        mostrarCopiado(btn);
+    } catch (err) {
+        window.prompt(I18N[idiomaActual].msgCopiarManual, url);
+    }
+}
+
+function mostrarCopiado(btn) {
+    const original = btn.textContent;
+    btn.textContent = '✓';
+    btn.classList.add('share-btn-copied');
+    setTimeout(() => {
+        btn.textContent = original;
+        btn.classList.remove('share-btn-copied');
+    }, 1500);
+}
+
+async function buscarCoches() {
+    const tabla = document.getElementById('tablaResultados');
+    const badgeCount = document.getElementById('numCoches');
+    const btnExportar = document.getElementById('btnExportar');
+
+    tabla.innerHTML = `<tr><td colspan="13"><div class="loader-cell" role="status" aria-live="polite"><span class="loader-spinner" aria-hidden="true"></span><span>${I18N[idiomaActual].msgCargando}</span></div></td></tr>`;
+    badgeCount.textContent = "...";
+    btnExportar.disabled = true;
+    renderAvisosProveedor(null);
+
+    const payload = {
+        marca: document.getElementById('marcaSelect').value,
+        categoria: categoriaSeleccionada,
+        proveedor: document.getElementById('proveedorSelect').value,
+        anioMin: document.getElementById('anioMin').value,
+        anioMax: document.getElementById('anioMax').value,
+        precioMin: document.getElementById('precioMin').value,
+        precioMax: document.getElementById('precioMax').value,
+        potenciaMin: document.getElementById('potenciaMin').value,
+        potenciaMax: document.getElementById('potenciaMax').value,
+        kmMin: document.getElementById('kmMin').value,
+        kmMax: document.getElementById('kmMax').value,
+        combustible: combustibleSeleccionado,
+        cambio: cambioSeleccionado
+    };
+
+    try {
+        const response = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const resData = await response.json();
+        const total = resData.data ? resData.data.length : 0;
+
+        badgeCount.textContent = total;
+        ultimosResultados = resData.data || [];
+        btnExportar.disabled = ultimosResultados.length === 0;
+        renderAvisosProveedor(resData.proveedores);
+
+        if (total === 0) {
+            tabla.innerHTML = `<tr><td colspan="13" style="text-align:center;">${I18N[idiomaActual].msgSinResultados}</td></tr>`;
+            return;
+        }
+
+        tabla.innerHTML = resData.data.map(item => `
+            <tr>
+                <td><strong>${item.proveedor}</strong></td>
+                <td><span class="badge">${item.categoria}</span></td>
+                <td>${item.marca}</td>
+                <td>
+                    <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="car-link">
+                        ${item.modelo} ↗
+                    </a>
+                </td>
+                <td>${item.anio}</td>
+                <td>${item.kilometros || 'N/D'}</td>
+                <td>${item.potencia || 'N/D'}</td>
+                <td>${item.combustible || 'N/D'}</td>
+                <td>${item.cambio || 'N/D'}</td>
+                <td><strong>${item.contado}</strong></td>
+                <td><strong>${item.financiado}</strong></td>
+                <td>${renderPuntuacion(item.puntuacion)}</td>
+                <td>
+                    <div class="acciones-cell">
+                        ${renderFavBtn(item)}
+                        <button type="button" class="share-btn" data-url="${escapeHtml(item.url)}" data-modelo="${escapeHtml(item.marca + ' ' + item.modelo)}" onclick="compartirVehiculo(this)" title="${I18N[idiomaActual].btnCompartirTitulo}">🔗</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (err) {
+        badgeCount.textContent = "0";
+        ultimosResultados = [];
+        btnExportar.disabled = true;
+        tabla.innerHTML = `<tr><td colspan="13" style="text-align:center; color: red;">${I18N[idiomaActual].msgError}</td></tr>`;
+    }
+}
+
+// Muestra un aviso discreto por cada proveedor que ha vuelto con 0
+// resultados mientras al menos otro sí ha traído coches. Si solo se
+// consulta una fuente, o si todas han fallado a la vez (probablemente un
+// problema de red o de filtros, no de una web en concreto), no se avisa.
+function renderAvisosProveedor(proveedores) {
+    const contenedor = document.getElementById('avisosProveedor');
+    contenedor.innerHTML = '';
+    contenedor.style.display = 'none';
+    if (!proveedores) return;
+
+    const nombres = Object.keys(proveedores);
+    if (nombres.length < 2) return;
+
+    const algunoConResultados = nombres.some(n => proveedores[n] > 0);
+    if (!algunoConResultados) return;
+
+    const fallidos = nombres.filter(n => proveedores[n] === 0);
+    if (fallidos.length === 0) return;
+
+    contenedor.innerHTML = fallidos.map(n =>
+        `<div class="provider-warning">${I18N[idiomaActual].msgAviso(n)}</div>`
+    ).join('');
+    contenedor.style.display = 'flex';
+}
+
+// Exporta los resultados actualmente cargados (ya filtrados) a un .xlsx
+function exportarExcel() {
+    if (!ultimosResultados.length) return;
+
+    const filas = ultimosResultados.map(item => ({
+        'Proveedor': item.proveedor,
+        'Categoría': item.categoria,
+        'Marca': item.marca,
+        'Modelo': item.modelo,
+        'Año': item.anio,
+        'Kilómetros': item.kilometros || 'N/D',
+        'Potencia': item.potencia || 'N/D',
+        'Combustible': item.combustible || 'N/D',
+        'Cambio': item.cambio || 'N/D',
+        'Precio Contado': item.contado,
+        'Precio Financiado': item.financiado,
+        'Puntuación': item.puntuacion !== null && item.puntuacion !== undefined ? item.puntuacion : 'N/D',
+        'URL': item.url
+    }));
+
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    hoja['!cols'] = [
+        { wch: 18 }, { wch: 10 }, { wch: 12 }, { wch: 42 },
+        { wch: 6 }, { wch: 12 }, { wch: 10 }, { wch: 20 }, { wch: 12 },
+        { wch: 14 }, { wch: 16 }, { wch: 11 }, { wch: 55 }
+    ];
+
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Vehículos');
+
+    const fecha = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(libro, `vehiculos_${fecha}.xlsx`);
+}
+</script>
+
+
+
+</body></html>
